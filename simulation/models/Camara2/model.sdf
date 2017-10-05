@@ -1,0 +1,91 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+  <model name='Camara2'>
+   <pose>0 0 0 0 0 0</pose>
+   <link name='linkCam2'>
+     <inertial>
+       <mass>0.1</mass>
+       <inertia>
+         <ixx>1</ixx>
+         <ixy>0</ixy>
+         <ixz>0</ixz>
+         <iyy>1</iyy>
+         <iyz>0</iyz>
+         <izz>1</izz>
+       </inertia>
+     </inertial>
+     <collision name='collision'>
+       <geometry>
+         <box>
+            <size>0.1 0.1 0.1</size>
+         </box>
+       </geometry>
+       <max_contacts>10</max_contacts>
+       <surface>
+         <contact>
+           <ode/>
+         </contact>
+         <bounce/>
+         <friction>
+           <ode/>
+         </friction>
+       </surface>
+     </collision>
+     <visual name='visual'>
+       <geometry>
+         <box>
+           <size>0.1 0.1 0.1</size>
+         </box>
+       </geometry>
+       <material>
+      <script>
+        <uri>file://media/materials/scripts/gazebo.material</uri>
+        <name>Gazebo/Black</name>
+      </script>
+    </material>
+     </visual>
+     <sensor name="camera" type="camera">
+        <camera>
+          <horizontal_fov>2.093</horizontal_fov>
+          <image>
+            <width>604</width>
+            <height>679</height>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>100</far>
+          </clip>
+          <lens>
+            <type>stereographic</type>
+            <scale_to_hfov>true</scale_to_hfov>
+            <cutoff_angle>1.5707</cutoff_angle>
+            <env_texture_size>512</env_texture_size>
+          </lens>
+        </camera>
+        <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+        <alwaysOn>true</alwaysOn>
+        <updateRate>10</updateRate>
+        <cameraName>Doris/camera2</cameraName>
+        <imageTopicName>image_raw</imageTopicName>
+        <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+        <frameName>Doris__Camara2__linkCam2</frameName>
+        <hackBaseline>0.07</hackBaseline>
+        <distortionK1>-2.6019586095779829e-001</distortionK1>
+        <distortionK2>5.5052401922323718e-002</distortionK2>
+        <distortionK3>0.0</distortionK3>
+        <distortionT1>0.0</distortionT1>
+        <distortionT2>-4.5449850126361765e-003</distortionT2>
+	
+        <!--<distortionK1>0.0</distortionK1>
+        <distortionK2>0.0</distortionK2>
+        <distortionK3>0.0</distortionK3>
+        <distortionT1>0.0</distortionT1>
+        <distortionT2>0.0</distortionT2>-->
+       </plugin>
+      </sensor>
+    </link>
+     <self_collide>0</self_collide>
+     <kinematic>0</kinematic>
+     <gravity>1</gravity>
+ </model>
+</sdf>
