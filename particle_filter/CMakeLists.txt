@@ -23,24 +23,24 @@ find_package(catkin REQUIRED COMPONENTS
 )
 ##include(CheckFunctionExists)
 find_package (OpenCV REQUIRED)
-find_package (trabajo REQUIRED)
+find_package (detector REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
  CATKIN_DEPENDS cv_bridge roscpp std_msgs gazebo_ros image_transport tf geometry_msgs image_geometry tf2 
- DEPENDS OpenCV trabajo
+ DEPENDS OpenCV detector
 )
-include_directories(include ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${trabajo_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${detector_INCLUDE_DIRS})
 
-add_library(particle_filterlib
-	src/particle_filterns.cpp
+add_library(particle_filter
+	src/particle_filter.cpp
 
 )
-target_link_libraries(particle_filterlib ${catkin_LIBRARIES} ${OPENCV_LIBS} Detector)
+target_link_libraries(particle_filter ${catkin_LIBRARIES} ${OPENCV_LIBS} detector)
 #target_link_libraries(Detector ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} )
 
 
-add_executable (particle_filterexec src/node.cpp)
-target_link_libraries(particle_filterexec ${catkin_LIBRARIES} ${OPENCV_LIBS} ${trabajo_LIBRARIES} particle_filterlib Detector)
+add_executable (particle_filterexec src/particle_filter_node.cpp)
+target_link_libraries(particle_filterexec ${catkin_LIBRARIES} ${OPENCV_LIBS} particle_filter detector )
 
 
 #find_package (OpenCV REQUIRED)

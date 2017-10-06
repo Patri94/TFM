@@ -51,7 +51,7 @@
   <build_depend>tf2</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>image_geometry</build_depend>
-  <build_depend>trabajo</build_depend>
+  <build_depend>detector</build_depend>
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>roscpp</exec_depend>
   <exec_depend>opencv2</exec_depend>
@@ -62,7 +62,7 @@
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>image_geometry</exec_depend>
   <exec_depend>tf2</exec_depend>
-  <exec_depend>trabajo</exec_depend>
+  <exec_depend>detector</exec_depend>
   
   
   
