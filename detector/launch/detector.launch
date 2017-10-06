@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+    
+    
+	
+	<node name="DetectorNode" pkg="trabajo" type="DetectorNode"  output="screen" launch-prefix="xterm -e" respawn="true">
+	
+	<param name="IMAGE_WIDTH" value= "1812" />
+	</node>
+	
+        
+</launch>
