@@ -62,12 +62,13 @@ using namespace cv;
 
         //Taking parameters from launch file
 
-        XmlRpc::XmlRpcValue marker_list;
+        XmlRpc::XmlRpcValue marker_list,camera_list;
         nh1_.getParam("/particle_filter/IMAGE_WIDTH",image_width);
         nh1_.getParam("/particle_filter/MARKER_HEIGHT",marker_height);
         nh1_.getParam("/particle_filter/MARKER_WIDTH",marker_width);
         nh1_.getParam("/particle_filter/NUM_CAM",num_cam);
         nh1_.getParam("/particle_filter/marker_positions",marker_list);
+        nh1_.getParam("/particle_filter/camera_positions",camera_list);
         cout<<"Camaras"<<num_cam<<endl;
         //Reading mapfile
         std::vector<geometry_msgs::Pose> Centros;
@@ -92,6 +93,27 @@ using namespace cv;
                 IDs.push_back(marker_list[i]["ID"]);
 
             }
+        //Reading camerafile
+        std::vector<geometry_msgs::Pose> cameras;
+        for(int i=0;i<marker_list.size();i++){
+                tf::Matrix3x3 orientation;
+                tf::Quaternion Quat;
+                geometry_msgs::Pose temp_pose;
+                temp_pose.position.x=camera_list[i]["x"];
+                temp_pose.position.y=camera_list[i]["y"];
+                temp_pose.position.z=camera_list[i]["z"];
+                double roll =camera_list[i]["roll"];
+                double pitch =camera_list[i]["pitch"];
+                double yaw =camera_list[i]["yaw"];
+                orientation.setRPY (float(roll),float(pitch),float(yaw));
+                orientation.getRotation(Quat);
+                temp_pose.orientation.x = double(Quat.x());
+                temp_pose.orientation.y = double(Quat.y());
+                temp_pose.orientation.z = double(Quat.z());
+                temp_pose.orientation.w = double(Quat.w());
+                cameras.push_back(temp_pose);
+
+            }
         this->publicar=nh1_.advertise<visualization_msgs::Marker> ("marker_pose",1);
         this->publicar_cam1=nh1_.advertise<visualization_msgs::Marker> ("marker_pose_cam1",1);
         this->publicar_cam2=nh1_.advertise<visualization_msgs::Marker> ("marker_pose_cam2",1);
@@ -99,7 +121,7 @@ using namespace cv;
         this->publicar_mapa=nh1_.advertise<visualization_msgs::Marker> ("mapa",1);
         detector_subs=nh1_.subscribe<sensor_msgs::Image> ("detector_output",1,&ParticleFilter::imageCallback,this);
 
-
+        this->loadTFCameras(cameras);
         this->LoadMap(IDs,Centros);
         this->LoadCameraInfo();
 
@@ -206,123 +228,38 @@ void ParticleFilter::LoadMap(std::vector<int>IDs,std::vector<geometry_msgs::Pose
 
 }
 
-std::vector<cv::Point2d> ParticleFilter::Proyectar(visualization_msgs::Marker CamCoord1, float width, float cam){
-    //TF to CAM1 (Center)
-    geometry_msgs::Pose Cam1;
-    Cam1.position.x=0.0;
-    Cam1.position.y=0.0;
-    Cam1.position.z=0.1;
-    geometry_msgs::Quaternion QuatCam1;
-    QuatCam1=tf::createQuaternionMsgFromRollPitchYaw(0,0,0);
-    Cam1.orientation=QuatCam1;
-    tf::Quaternion QuatT;
-    QuatT.setRPY(0,0,0);
-    geometry_msgs::PoseStamped Cam1St;
-    tf::Transform CamTCam1,invCamTCam1;
-    geometry_msgs::TransformStamped invCamTCam1St,CamTCam1St;
-    tf::Vector3 Trasl (Cam1.position.x,Cam1.position.y,Cam1.position.z);
-    CamTCam1.setOrigin(Trasl);
-    CamTCam1.setRotation(QuatT);
-    invCamTCam1=CamTCam1.inverse();
-    transformTFToMsg(CamTCam1,CamTCam1St.transform);
-    transformTFToMsg(invCamTCam1,invCamTCam1St.transform);
-    CamTCam1St.header.frame_id="camera_link";
-    CamTCam1St.child_frame_id="Cam1";
-    this->br.sendTransform(CamTCam1St);
-    //TF to CAM2 (Left)
-    geometry_msgs::Pose Cam2;
-    Cam2.position.x=-0.08660254;
-    Cam2.position.y=0.0;
-    Cam2.position.z=-0.05;
-    geometry_msgs::Quaternion QuatCam2;
-    QuatCam2=tf::createQuaternionMsgFromRollPitchYaw(0,-2.093,0);
-    Cam2.orientation=QuatCam2;
-    tf::Quaternion QuatT2;
-    QuatT2.setRPY(0,-2.093,0);
-    geometry_msgs::PoseStamped Cam2St;
-    tf::Transform CamTCam2,invCamTCam2;
-    geometry_msgs::TransformStamped invCamTCam2St,CamTCam2St;
-    tf::Vector3 Trasl2 (Cam2.position.x,Cam2.position.y,Cam2.position.z);
-    CamTCam2.setOrigin(Trasl2);
-    CamTCam2.setRotation(QuatT2);
-    invCamTCam2=CamTCam2.inverse();
-    transformTFToMsg(CamTCam2,CamTCam2St.transform);
-    transformTFToMsg(invCamTCam2,invCamTCam2St.transform);
-    CamTCam2St.header.frame_id="camera_link";
-    CamTCam2St.child_frame_id="Cam2";
-    this->br.sendTransform(CamTCam2St);
-    //TF a Cam3 (Right)
-    geometry_msgs::Pose Cam3;
-    Cam3.position.x=0.08660254;
-    Cam3.position.y=0.0;
-    Cam3.position.z=-0.05;
-    geometry_msgs::Quaternion QuatCam3;
-    QuatCam3=tf::createQuaternionMsgFromRollPitchYaw(0,2.093,0);
-    Cam3.orientation=QuatCam3;
-    tf::Quaternion QuatT3;
-    QuatT3.setRPY(0,2.093,0);
-    geometry_msgs::PoseStamped Cam3St;
-    tf::Transform CamTCam3,invCamTCam3;
-    geometry_msgs::TransformStamped invCamTCam3St,CamTCam3St;
-    tf::Vector3 Trasl3 (Cam3.position.x,Cam3.position.y,Cam3.position.z);
-    CamTCam3.setOrigin(Trasl3);
-    CamTCam3.setRotation(QuatT3);
-    invCamTCam3=CamTCam3.inverse();
-    transformTFToMsg(CamTCam3,CamTCam3St.transform);
-    transformTFToMsg(invCamTCam3,invCamTCam3St.transform);
-    CamTCam3St.header.frame_id="camera_link";
-    CamTCam3St.child_frame_id="Cam3";
-    this->br.sendTransform(CamTCam3St);
+void ParticleFilter::loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras){
+     cout<<"entro"<<endl;
+     cout<<pose_cameras.size()<<endl;
+    for (int i=0; i<pose_cameras.size();i++){
+        tf::Vector3 Trasl (pose_cameras[i].position.x,pose_cameras[i].position.y,pose_cameras[i].position.z);
+        geometry_msgs::TransformStamped inv_tf_cam_st,tf_cam_st;
+        tf::Quaternion QuatT (pose_cameras[i].orientation.x,pose_cameras[i].orientation.y,pose_cameras[i].orientation.z,pose_cameras[i].orientation.w);
+        tf::Transform tf_cam, inv_tfcam;
+        tf_cam.setOrigin(Trasl);
+        tf_cam.setRotation(QuatT);
+        inv_tfcam=tf_cam.inverse();
+        transformTFToMsg(tf_cam,tf_cam_st.transform);
+        transformTFToMsg(inv_tfcam,inv_tf_cam_st.transform);
+        inv_tf_cam_st.header.frame_id="camera_link";
+        inv_tf_cam_st.child_frame_id="Cam"+to_string(i);
+        tf_cameras.push_back(inv_tf_cam_st);
+        this->br.sendTransform(inv_tf_cam_st);
 
-    //Corners in CAM1 Coordinates
-    visualization_msgs::Marker MarkersCam1;
-    MarkersCam1.header.frame_id="Cam1";
-    MarkersCam1.pose.orientation.w= 1.0;
-    MarkersCam1.scale.x=0.1;
-    MarkersCam1.scale.y=0.1;
-    MarkersCam1.scale.z=0.1;
-    MarkersCam1.ns= "spheres";
-    MarkersCam1.id = 0;
-    MarkersCam1.type = visualization_msgs::Marker::SPHERE_LIST;
-    MarkersCam1.action= visualization_msgs::Marker::ADD;
-    MarkersCam1.color.r = 1.0f;
+    }
 
-    MarkersCam1.color.a = 1.0;
-    MarkersCam1.header.frame_id="Cam1";
-    for (int i=0;i<CamCoord1.points.size();i++){
-            geometry_msgs::PointStamped CoordCam1St,CoordCamTransSt;
-            CoordCam1St.point=CamCoord1.points[i];
-            tf2::doTransform(CoordCam1St,CoordCamTransSt,invCamTCam1St);
-            MarkersCam1.points.push_back(CoordCamTransSt.point);
-        }
-    this->publicar_cam1.publish(MarkersCam1);
-    //Corners in CAM2 Coordinates
-   visualization_msgs::Marker MarkersCam2;
-    MarkersCam2.header.frame_id="Cam2";
-    for (int i=0;i<CamCoord1.points.size();i++){
-            geometry_msgs::PointStamped CoordCam2St,CoordCamTransSt2;
-            CoordCam2St.point=CamCoord1.points[i];
-            tf2::doTransform(CoordCam2St,CoordCamTransSt2,invCamTCam2St);
-            MarkersCam2.points.push_back(CoordCamTransSt2.point);
-        }
-    this->publicar_cam2.publish(MarkersCam2);
-    //Corners in CAM3 Coordinates
-    visualization_msgs::Marker MarkersCam3;
-    MarkersCam3.header.frame_id="Cam3";
-    for (int i=0;i<CamCoord1.points.size();i++){
-            geometry_msgs::PointStamped CoordCam3St,CoordCamTransSt3;
-            CoordCam3St.point=CamCoord1.points[i];
-            tf2::doTransform(CoordCam3St,CoordCamTransSt3,invCamTCam3St);
-            MarkersCam3.points.push_back(CoordCamTransSt3.point);
-        }
-    this->publicar_cam3.publish(MarkersCam3);
 
-    //Which Camera?
+
+
+
+}
+
+std::vector<cv::Point2d> ParticleFilter::Proyectar(visualization_msgs::Marker cam_center_coord, float width, float cam){
     std::vector<cv::Point2d> Pixels;
-    for (int i=0;i<CamCoord1.points.size();i++){
-     //Angle respect to Z of CAM1
+    for (int i=0;i<cam_center_coord.points.size();i++){
+         cam_center_coord_st.point=cam_center_coord.points[i];
     float angulo;
-    angulo = atan2(double(CamCoord1.points[i].x),double(CamCoord1.points[i].z));
+    angulo = atan2(double(cam_center_coord.points[i].x),double(cam_center_coord.points[i].z));
     if (angulo<0){
             angulo=angulo+(2*M_PI);
         }
@@ -331,31 +268,33 @@ std::vector<cv::Point2d> ParticleFilter::Proyectar(visualization_msgs::Marker Ca
     //cout<<"offset"<<offset<<endl;
     offset.y=0;
     cv::Point3d Coord;
-    //CAM2
     if (angulo>M_PI and angulo<5.2333){
-            Coord.x=MarkersCam2.points[i].x;
-            Coord.y=MarkersCam2.points[i].y;
-            Coord.z=MarkersCam2.points[i].z;
+           //camera2
+            tf2::doTransform(cam_center_coord_st,cam_trans_coord_st,tf_cameras[1]);
+            Coord.x=cam_trans_coord_st.point.x;
+            Coord.y=cam_trans_coord_st.point.y;
+            Coord.z=cam_trans_coord_st.point.z;
             Pixel=this->pin_model.project3dToPixel(Coord);
             Pixel=Pixel-offset;
 
         }else{
             //CAM3
             if(angulo>1.047 and angulo<M_PI){
-                    Coord.x=MarkersCam3.points[i].x;
-                    Coord.y=MarkersCam3.points[i].y;
-                    Coord.z=MarkersCam3.points[i].z;
-                    Pixel=this->pin_model.project3dToPixel(Coord);
-                    Pixel=Pixel+offset;
+                tf2::doTransform(cam_center_coord_st,cam_trans_coord_st,tf_cameras[2]);
+                Coord.x=cam_trans_coord_st.point.x;
+                Coord.y=cam_trans_coord_st.point.y;
+                Coord.z=cam_trans_coord_st.point.z;
+                Pixel=this->pin_model.project3dToPixel(Coord);
+                Pixel=Pixel+offset;
                 }else{//CAM1
-                    Coord.x=MarkersCam1.points[i].x;
-                    Coord.y=MarkersCam1.points[i].y;
-                    Coord.z=MarkersCam1.points[i].z;
-                    Pixel=this->pin_model.project3dToPixel(Coord);
+                tf2::doTransform(cam_center_coord_st,cam_trans_coord_st,tf_cameras[0]);
+                Coord.x=cam_trans_coord_st.point.x;
+                Coord.y=cam_trans_coord_st.point.y;
+                Coord.z=cam_trans_coord_st.point.z;
+                Pixel=this->pin_model.project3dToPixel(Coord);
                 }
         }
      Pixels.push_back(Pixel);
-     //cout<<Pixel.x<<" "<<Pixel.y<<endl;
         }
 
     return Pixels;

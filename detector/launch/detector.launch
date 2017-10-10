@@ -3,7 +3,7 @@
     
     
 	
-	<node name="DetectorNode" pkg="trabajo" type="DetectorNode"  output="screen" launch-prefix="xterm -e" respawn="true">
+	<node name="DetectorNode" pkg="detector" type="detector_node"  output="screen" launch-prefix="xterm -e" respawn="true">
 	
 	<param name="IMAGE_WIDTH" value= "1812" />
 	</node>

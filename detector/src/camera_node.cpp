@@ -89,7 +89,7 @@ CameraNode::CameraNode ( const ros::NodeHandle& nh,const ros::NodeHandle& nh_pri
     TimeSynchronizer<Image, CameraInfo> sync(image_sub, info_sub, 10);
     sync.registerCallback(boost::bind(&CameraNode::infoCallback, this,_1, _2));
     this->odometry=nh_.subscribe("/Doris/odom",1,boundOdom);
-    this->pub_comb=it.advertise("DetectorOutput",1);
+    this->pub_comb=it.advertise("detector_output",1);
 
 
     //Initialize publishers

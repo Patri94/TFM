@@ -33,7 +33,8 @@ using namespace tf;
         ros::NodeHandle nh_private1_;
          cv::Mat imagen_filter;
         image_geometry::PinholeCameraModel pin_model;
-        geometry_msgs::Pose EstimatedPose;
+        geometry_msgs::Pose EstimatedPose,Cam1,Cam2,Cam3;
+        std::vector<geometry_msgs::TransformStamped> tf_cameras;
         ros::Publisher publicar,publicar_cam1,publicar_cam2,publicar_cam3,publicar_mapa;
         ros::Subscriber detector_subs;
         float  marker_width, num_cam,marker_height,image_width;
@@ -51,6 +52,7 @@ using namespace tf;
         //Functions
         void LoadCameraInfo(void);
         void LoadMap(std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros);
+        void loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras);
         std::vector<geometry_msgs::Point> ObservationModel (Marcador Marca, geometry_msgs::Pose CamaraMundo);
         void ErrorCalc();
         std::vector<cv::Point2d> Proyectar(visualization_msgs::Marker CamCoord1,float width, float cam);
