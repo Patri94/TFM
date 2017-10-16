@@ -41,12 +41,13 @@ catkin_package(
 )
 include_directories(include ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} )
 add_library(detector
-	src/camera_node.cpp
+	src/c_detector.cpp
 	src/marcador.cpp
 
 )
 
 target_link_libraries(detector ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} )
+add_dependencies(detector ${PROJECT_NAME}_gencpp)
 
 
 add_executable (detector_node src/detector.cpp)

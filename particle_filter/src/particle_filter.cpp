@@ -8,7 +8,6 @@
 #include "opencv2/imgproc.hpp"
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
-#include <boost/assign/list_of.hpp>
 #include <string>
 #include <iomanip>
 #include <sstream>
@@ -30,9 +29,6 @@
 #include <geometry_msgs/PoseArray.h>
 #include <image_geometry/pinhole_camera_model.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <boost/geometry/geometries/adapted/boost_array.hpp>
-#include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <XmlRpcException.h>
@@ -53,12 +49,6 @@ using namespace cv;
     ParticleFilter::ParticleFilter ( const ros::NodeHandle& nh1,const ros::NodeHandle& nh_private1)
         :nh1_(nh1),nh_private1_(nh_private1)
     {
-       // typedef const boost::function< void(const sensor_msgs::ImageConstPtr &)>  callback;
-       // callback boundImageCallback = boost::bind(&particle_filter::imageCallback,this,_1);
-       // image_transport::ImageTransport it(nh1_);
-        //image_transport::Subscriber detector("DetectorOutput",nh_1,boundImageCallback);
-        //image_transport::Subscriber detector= it.subscribe("DetectorOutput", 1, boundImageCallback);
-
 
         //Taking parameters from launch file
 
@@ -255,6 +245,7 @@ void ParticleFilter::loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras
 }
 
 std::vector<cv::Point2d> ParticleFilter::Proyectar(visualization_msgs::Marker cam_center_coord, float width, float cam){
+   geometry_msgs::PointStamped cam_center_coord_st,cam_trans_coord_st;
     std::vector<cv::Point2d> Pixels;
     for (int i=0;i<cam_center_coord.points.size();i++){
          cam_center_coord_st.point=cam_center_coord.points[i];
@@ -263,9 +254,8 @@ std::vector<cv::Point2d> ParticleFilter::Proyectar(visualization_msgs::Marker ca
     if (angulo<0){
             angulo=angulo+(2*M_PI);
         }
-    cv::Point2d Pixel,offset,Pixel2;
+    cv::Point2d Pixel,offset;
     offset.x=width/cam;
-    //cout<<"offset"<<offset<<endl;
     offset.y=0;
     cv::Point3d Coord;
     if (angulo>M_PI and angulo<5.2333){

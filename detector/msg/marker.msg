@@ -1,2 +1,2 @@
-geometry_msgs/Point32[4] Corners
+geometry_msgs/Point[] Corners
 int32 ID
