@@ -40,7 +40,7 @@
     </include>
     <include>
         <uri>model://Doris</uri>
-        <pose>2 1 0 0 1.57</pose>
+        <pose>2 1 0 0 0 1.57</pose>
     </include>
     <model name='ground_plane'>
       <static>1</static>

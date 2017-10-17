@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(amcl)
+project(amcl_doris)
+set(ROS_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Debug)
+## Compile as C++11, supported in ROS Kinetic and newer
+ add_compile_options(-std=c++11)
 
 find_package(catkin REQUIRED
         COMPONENTS
@@ -7,14 +11,22 @@ find_package(catkin REQUIRED
             rosbag
             roscpp
             std_srvs
+            std_msgs
             tf
             dynamic_reconfigure
             nav_msgs
             std_srvs
+            image_transport
+            std_msgs
+  	    tf
+            geometry_msgs
+            image_geometry
+            tf2
         )
 
 find_package(Boost REQUIRED)
-
+find_package (OpenCV REQUIRED)
+find_package (detector REQUIRED)
 # dynamic reconfigure
 generate_dynamic_reconfigure_options(
     cfg/AMCL.cfg
@@ -26,13 +38,15 @@ catkin_package(
         roscpp
         dynamic_reconfigure
         tf
+	tf2
   CATKIN_DEPENDS nav_msgs std_srvs
   INCLUDE_DIRS include
   LIBRARIES amcl_sensors amcl_map amcl_pf
+  DEPENDS OpenCV detector
 )
 
 include_directories(include)
-include_directories(${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+include_directories(${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${detector_INCLUDE_DIRS})
 
 add_library(amcl_pf
                     src/amcl/pf/pf.c
@@ -52,18 +66,21 @@ add_library(amcl_map
 add_library(amcl_sensors
                     src/amcl/sensors/amcl_sensor.cpp
                     src/amcl/sensors/amcl_odom.cpp
-                    src/amcl/sensors/amcl_laser.cpp)
-target_link_libraries(amcl_sensors amcl_map amcl_pf)
+                    src/amcl/sensors/amcl_laser.cpp
+		    src/amcl/sensors/amcl_marker.cpp)
+target_link_libraries(amcl_sensors amcl_map amcl_pf ${OPENCV_LIBS} ${catkin_LIBRARIES} detector)
 
 
 add_executable(amcl
                        src/amcl_node.cpp)
-add_dependencies(amcl ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(amcl ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} detector)
 
 target_link_libraries(amcl
     amcl_sensors amcl_map amcl_pf
     ${Boost_LIBRARIES}
     ${catkin_LIBRARIES}
+    ${OPENCV_LIBS} 
+    detector
 )
 
 install( TARGETS

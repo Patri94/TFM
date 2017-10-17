@@ -35,6 +35,10 @@
 #include "amcl/pf/pf.h"
 #include "amcl/sensors/amcl_odom.h"
 #include "amcl/sensors/amcl_laser.h"
+#include "amcl/sensors/amcl_marker.h"
+#include "detector/detector.h"
+#include "detector/marker.h"
+
 
 #include "ros/assert.h"
 
@@ -49,6 +53,9 @@
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/SetMap.h"
 #include "std_srvs/Empty.h"
+#include <visualization_msgs/Marker.h>
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/CameraInfo.h>
 
 // For transform support
 #include "tf/transform_broadcaster.h"
@@ -211,6 +218,7 @@ class AmclNode
 
     AMCLOdom* odom_;
     AMCLLaser* laser_;
+    AMCLMarker* marker_;
 
     ros::Duration cloud_pub_interval;
     ros::Time last_cloud_pub_time;
@@ -267,6 +275,24 @@ class AmclNode
     ros::Time last_laser_received_ts_;
     ros::Duration laser_check_interval_;
     void checkLaserReceived(const ros::TimerEvent& event);
+
+    //For Camera PF
+    geometry_msgs::Pose EstimatedPose,Cam1,Cam2,Cam3;
+    ros::Publisher publicar,publicar_cam1,publicar_cam2,publicar_cam3,publicar_mapa;
+    ros::Subscriber detector_subs, corners_subs;
+    float  marker_width, num_cam,marker_height,image_width;
+    visualization_msgs::Marker pub_map;
+    tf::TransformBroadcaster br_marker;
+    Mat imagen_filter;
+    //Functions
+    void LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros);
+    void loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras);
+    void imageCallback(const sensor_msgs::ImageConstPtr& msg);
+    void detectionCallback (const detector::detector msg);
+    std::vector<geometry_msgs::Point> CalculateRelativePose (Marcador Marca, geometry_msgs::Pose CamaraMundo);
+
+
+
 };
 
 std::vector<std::pair<int,int> > AmclNode::free_space_indices;
@@ -453,6 +479,70 @@ AmclNode::AmclNode() :
   laser_check_interval_ = ros::Duration(15.0);
   check_laser_timer_ = nh_.createTimer(laser_check_interval_, 
                                        boost::bind(&AmclNode::checkLaserReceived, this, _1));
+
+  //For Camera PF
+  XmlRpc::XmlRpcValue marker_list,camera_list;
+  private_nh_.getParam("/particle_filter/IMAGE_WIDTH",image_width);
+  private_nh_.getParam("/particle_filter/MARKER_HEIGHT",marker_height);
+  private_nh_.getParam("/particle_filter/MARKER_WIDTH",marker_width);
+  private_nh_.getParam("/particle_filter/NUM_CAM",num_cam);
+  private_nh_.getParam("/particle_filter/marker_positions",marker_list);
+  private_nh_.getParam("/particle_filter/camera_positions",camera_list);
+
+  //Reading mapfile
+  std::vector<geometry_msgs::Pose> Centros;
+  std::vector<int> IDs;
+  for(int i=0;i<marker_list.size();i++){
+          tf::Matrix3x3 orientation;
+          tf::Quaternion Quat;
+          geometry_msgs::Pose temp_pose;
+          temp_pose.position.x=marker_list[i]["x"];
+          temp_pose.position.y=marker_list[i]["y"];
+          temp_pose.position.z=marker_list[i]["z"];
+          double roll =marker_list[i]["roll"];
+          double pitch =marker_list[i]["pitch"];
+          double yaw =marker_list[i]["yaw"];
+          orientation.setRPY (float(roll),float(pitch),float(yaw));
+          orientation.getRotation(Quat);
+          temp_pose.orientation.x = double(Quat.x());
+          temp_pose.orientation.y = double(Quat.y());
+          temp_pose.orientation.z = double(Quat.z());
+          temp_pose.orientation.w = double(Quat.w());
+          Centros.push_back(temp_pose);
+          IDs.push_back(marker_list[i]["ID"]);
+
+      }
+  //Reading camerafile
+  std::vector<geometry_msgs::Pose> cameras;
+  for(int i=0;i<marker_list.size();i++){
+          tf::Matrix3x3 orientation;
+          tf::Quaternion Quat;
+          geometry_msgs::Pose temp_pose;
+          temp_pose.position.x=camera_list[i]["x"];
+          temp_pose.position.y=camera_list[i]["y"];
+          temp_pose.position.z=camera_list[i]["z"];
+          double roll =camera_list[i]["roll"];
+          double pitch =camera_list[i]["pitch"];
+          double yaw =camera_list[i]["yaw"];
+          orientation.setRPY (float(roll),float(pitch),float(yaw));
+          orientation.getRotation(Quat);
+          temp_pose.orientation.x = double(Quat.x());
+          temp_pose.orientation.y = double(Quat.y());
+          temp_pose.orientation.z = double(Quat.z());
+          temp_pose.orientation.w = double(Quat.w());
+          cameras.push_back(temp_pose);
+
+}
+
+  this->publicar= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose",1);
+  this->publicar_cam1= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam1",1);
+  this->publicar_cam2= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam2",1);
+  this->publicar_cam3= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam3",1);
+  this->publicar_mapa= private_nh_.advertise<visualization_msgs::Marker> ("mapa",1);
+  this->detector_subs= private_nh_.subscribe<sensor_msgs::Image> ("detector_output",1,&AmclNode::imageCallback,this);
+  this->corners_subs=private_nh_.subscribe<detector::detector>("detection",1,&AmclNode::detectionCallback,this);
+  this->loadTFCameras(cameras);
+  this->LoadMapMarkers(IDs,Centros);
 }
 
 void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
@@ -1529,4 +1619,178 @@ AmclNode::applyInitialPose()
     delete initial_pose_hyp_;
     initial_pose_hyp_ = NULL;
   }
+}
+
+void AmclNode::LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros){
+
+    this->pub_map.header.frame_id="ground_plane__link";
+    this->pub_map.pose.orientation.w= 1.0;
+    this->pub_map.scale.x=0.1;
+    this->pub_map.scale.y=0.1;
+    this->pub_map.scale.z=0.1;
+    this->pub_map.ns= "spheres";
+    this->pub_map.id = 0;
+    this->pub_map.type = visualization_msgs::Marker::SPHERE_LIST;
+    this->pub_map.action= visualization_msgs::Marker::ADD;
+    this->pub_map.color.r = 1.0f;
+
+    this->pub_map.color.a = 1.0;
+
+    for (int i=0;i<Centros.size();i++){
+            Marcador Marker;
+            geometry_msgs::Pose marker_pose=Centros[i];
+            geometry_msgs::TransformStamped tf_marker;
+            tf_marker.header.frame_id="ground_plane__link";
+            tf_marker.child_frame_id="Marca"+std::to_string(i);
+            tf_marker.transform.translation.x=marker_pose.position.x;
+            tf_marker.transform.translation.y=marker_pose.position.y;
+            tf_marker.transform.translation.z=marker_pose.position.z;
+            tf_marker.transform.rotation=marker_pose.orientation;
+
+            //0=topleftcorner
+            for (int i=0;i<4;i++){
+                    geometry_msgs::PointStamped relative_corner;
+                    relative_corner.point.x=marker_width/2;
+                    relative_corner.point.y=marker_height/2;
+                    relative_corner.point.z=0;
+
+                    if(i==1 or i==2){
+                            cout<<"entro1"<<endl;
+                            relative_corner.point.x=-marker_width/2;
+                        }
+                    if(i==0 or i==1){
+                            cout<<"entro2"<<endl;
+                            relative_corner.point.y=-marker_height/2;
+                        }
+                    geometry_msgs::PointStamped global_corner;
+                    tf2::doTransform(relative_corner,global_corner,tf_marker);
+                    Marker.setCorner(global_corner.point);
+                    pub_map.points.push_back(global_corner.point);
+                }
+            Marker.setMarkerId(IDs[i]);
+            this->marker_->map.push_back(Marker);
+
+
+
+
+        }
+
+
+
+
+
+
+
+}
+void AmclNode::loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras){
+     cout<<"entro"<<endl;
+     cout<<pose_cameras.size()<<endl;
+    for (int i=0; i<pose_cameras.size();i++){
+        tf::Vector3 Trasl (pose_cameras[i].position.x,pose_cameras[i].position.y,pose_cameras[i].position.z);
+        geometry_msgs::TransformStamped inv_tf_cam_st,tf_cam_st;
+        tf::Quaternion QuatT (pose_cameras[i].orientation.x,pose_cameras[i].orientation.y,pose_cameras[i].orientation.z,pose_cameras[i].orientation.w);
+        tf::Transform tf_cam, inv_tfcam;
+        tf_cam.setOrigin(Trasl);
+        tf_cam.setRotation(QuatT);
+        inv_tfcam=tf_cam.inverse();
+        transformTFToMsg(tf_cam,tf_cam_st.transform);
+        transformTFToMsg(inv_tfcam,inv_tf_cam_st.transform);
+        inv_tf_cam_st.header.frame_id="camera_link";
+        inv_tf_cam_st.child_frame_id="Cam"+to_string(i);
+        this->marker_->tf_cameras.push_back(inv_tf_cam_st);
+        this->br_marker.sendTransform(inv_tf_cam_st);
+
+    }
+
+
+
+
+
+}
+
+void AmclNode::imageCallback(const sensor_msgs::ImageConstPtr& msg){
+    this->marker_->image_filter = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
+    cout<<"Callback"<<endl;
+    imshow("Callback",this->marker_->image_filter);
+    waitKey(30);
+
+}
+
+std::vector<geometry_msgs::Point> AmclNode::CalculateRelativePose (Marcador Marca, geometry_msgs::Pose CamaraMundo){
+    //Pose CAM;
+    tf::Transform MundTrob, invMundTrob,RobTCam,invRobotTCam;
+    tf::Quaternion RotCam;
+    //From Robot base to camera
+    RotCam.setRPY(-M_PI/2,0,-M_PI/2);//Pich de M_PI/2
+    RobTCam.setOrigin(tf::Vector3(0,0,1.4));
+    RobTCam.setRotation(RotCam);
+    tf::Quaternion QMundRCam (CamaraMundo.orientation.x,CamaraMundo.orientation.y,CamaraMundo.orientation.z,CamaraMundo.orientation.w);
+    tf::Vector3 Trasl1 (CamaraMundo.position.x,CamaraMundo.position.y,CamaraMundo.position.z);
+    //From World to Robot
+    MundTrob.setRotation(QMundRCam);
+    MundTrob.setOrigin(Trasl1);
+    //Inverse the transformation--> inversa del mundo a la camara
+    invRobotTCam=RobTCam.inverse();
+    invMundTrob = MundTrob.inverse();
+    geometry_msgs::TransformStamped MundTrobSt, RobotTCamSt;
+    MundTrobSt.header.frame_id="ground_plane__link";
+    MundTrobSt.child_frame_id="EstimatedPose";
+    RobotTCamSt.header.frame_id="EstimatedPose";
+    RobotTCamSt.child_frame_id="camera_link";
+    transformTFToMsg(MundTrob,MundTrobSt.transform);
+    transformTFToMsg(RobTCam,RobotTCamSt.transform);
+    this->br_marker.sendTransform(MundTrobSt);
+    this->br_marker.sendTransform(RobotTCamSt);
+
+    //Pose Transformation
+    geometry_msgs::TransformStamped invMundTrobStamped,invRobotTCamSt;
+    transformTFToMsg(invMundTrob,invMundTrobStamped.transform);
+    transformTFToMsg(invRobotTCam,invRobotTCamSt.transform);
+    std::vector<geometry_msgs::Point> RelativaCorners,PoseWorld;
+    //std::vector<geometry_msgs::Transform> Corners = Marca.getTransformCorners();
+    PoseWorld=Marca.getPoseWorld();
+    for (int i=0;i<4;i++){
+            geometry_msgs::PointStamped CornerRelPose,Inter,WorldPose;
+            WorldPose.point=PoseWorld[i];
+             tf2::doTransform(WorldPose,Inter,invMundTrobStamped);
+             tf2::doTransform(Inter,CornerRelPose,invRobotTCamSt);
+            RelativaCorners.push_back(CornerRelPose.point);
+
+        }
+    //cout<<"Tengo la posicion relativa"<<endl;
+    return RelativaCorners;
+
+
+
+}
+//Include all functions in callback
+void AmclNode::detectionCallback (const detector::detector msg){
+    for(int i=0;i<msg.DetectedMarkers.size();i++){
+        Marcador Marker;
+        std::vector<cv::Point2f> corners;
+        Marker.setMarkerId(msg.DetectedMarkers[i].ID);
+        for (int j=0;j<4;j++){
+            cv::Point2f corner;
+            corner.x=msg.DetectedMarkers[i].Corners[j].x;
+            corner.y=msg.DetectedMarkers[i].Corners[j].y;
+            corners.push_back(corner);
+        }
+        Marker.MarkerPoints(corners);
+        this->marker_->temp_obs.push_back(Marker);
+    }
+    if(!(this->marker_->image_filter.empty())){
+    for (int j=0;j<this->marker_->map.size();j++){
+    geometry_msgs::Pose Supuesta;
+    Supuesta.position.x=0;
+    Supuesta.position.y=0;
+    Supuesta.position.z=0;
+    tf::Quaternion Quat;
+    tf::Matrix3x3 Mat;
+    geometry_msgs::Quaternion QuatMs;
+    Mat.setRPY(0,0,0);
+    Mat.getRotation(Quat);
+    tf::quaternionTFToMsg (Quat,QuatMs);
+    Supuesta.orientation=QuatMs;
+    std::vector<cv::Point2d> proyeccion;
+    std::vector<geometry_msgs::Point> Relative=this->CalculateRelativePose(this->map[j],Supuesta);
 }

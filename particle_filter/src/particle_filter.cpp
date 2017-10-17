@@ -109,7 +109,7 @@ using namespace cv;
         this->publicar_cam2=nh1_.advertise<visualization_msgs::Marker> ("marker_pose_cam2",1);
         this->publicar_cam3=nh1_.advertise<visualization_msgs::Marker> ("marker_pose_cam3",1);
         this->publicar_mapa=nh1_.advertise<visualization_msgs::Marker> ("mapa",1);
-        detector_subs=nh1_.subscribe<sensor_msgs::Image> ("detector_output",1,&ParticleFilter::imageCallback,this);
+        detector_subs=nh1_.subscribe<sensor_msgs::Image> ("detection",1,&ParticleFilter::imageCallback,this);
 
         this->loadTFCameras(cameras);
         this->LoadMap(IDs,Centros);
@@ -341,13 +341,10 @@ std::vector<geometry_msgs::Point> ParticleFilter::ObservationModel (Marcador Mar
 }
 
 void ParticleFilter::ErrorCalc(){
-   // cout<<"llego"<<endl;
      cv::Mat copia = imagen_filter;
-    // cout<<"llego"<<endl;
-   // if (imagenfilter != imagenfilter){
     if(!(imagen_filter.empty())){
             for (int j=0;j<this->map.size();j++){
-    geometry_msgs::Pose Supuesta,Supuesta2;
+    geometry_msgs::Pose Supuesta;
     Supuesta.position.x=0;
     Supuesta.position.y=0;
     Supuesta.position.z=0;

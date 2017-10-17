@@ -1,5 +1,5 @@
 <package>
-    <name>amcl</name>
+    <name>amcl_doris</name>
     <version>1.14.2</version>
     <description>
         <p>
@@ -21,6 +21,7 @@
     <license>LGPL</license>
 
     <buildtool_depend>catkin</buildtool_depend>
+    
 
     <build_depend>rosbag</build_depend>
     <build_depend>dynamic_reconfigure</build_depend>
@@ -28,7 +29,16 @@
     <build_depend>nav_msgs</build_depend>
     <build_depend>roscpp</build_depend>
     <build_depend>std_srvs</build_depend>
+    <build_depend>std_msgs</build_depend>
+    
     <build_depend>tf</build_depend>
+    <build_depend>tf2</build_depend>
+    <build_depend>detector</build_depend>
+    <build_depend>cv_bridge</build_depend>
+    <build_depend> opencv2 </build_depend>
+    <build_depend>geometry_msgs</build_depend>
+    <build_depend>image_geometry</build_depend>
+    <build_depend>detector</build_depend>
 
     <run_depend>rosbag</run_depend>
     <run_depend>roscpp</run_depend>
@@ -36,6 +46,17 @@
     <run_depend>tf</run_depend>
     <run_depend>nav_msgs</run_depend>
     <run_depend>std_srvs</run_depend>
+    <run_depend>tf2</run_depend>
+
+    <run_depend>tf</run_depend>
+    <run_depend>tf2</run_depend>
+    <run_depend>detector</run_depend>
+    <run_depend>cv_bridge</run_depend>
+    <run_depend> opencv2 </run_depend>
+    <run_depend>geometry_msgs</run_depend>
+    <run_depend>image_geometry</run_depend>
+    <run_depend>detector</run_depend>
+
 
     <test_depend>rostest</test_depend>
     <test_depend>map_server</test_depend>
