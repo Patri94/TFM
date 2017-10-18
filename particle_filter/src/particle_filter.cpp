@@ -33,7 +33,7 @@
 #include <sensor_msgs/CameraInfo.h>
 #include <XmlRpcException.h>
 #include <detector/marker.h>
-#include <detector/detector.h>
+#include <detector/messagedet.h>
 #include <particle_filter/particle_filter.h>
 #include <visualization_msgs/Marker.h>
 

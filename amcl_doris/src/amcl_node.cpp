@@ -36,7 +36,7 @@
 #include "amcl/sensors/amcl_odom.h"
 #include "amcl/sensors/amcl_laser.h"
 #include "amcl/sensors/amcl_marker.h"
-#include "detector/detector.h"
+#include "detector/messagedet.h"
 #include "detector/marker.h"
 
 
@@ -66,7 +66,7 @@
 
 // Dynamic_reconfigure
 #include "dynamic_reconfigure/server.h"
-#include "amcl/AMCLConfig.h"
+#include "amcl_doris/AMCLConfig.h"
 
 // Allows AMCL to run from bag file
 #include <rosbag/bag.h>
@@ -288,7 +288,7 @@ class AmclNode
     void LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros);
     void loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras);
     void imageCallback(const sensor_msgs::ImageConstPtr& msg);
-    void detectionCallback (const detector::detector msg);
+    void detectionCallback (const detector::messagedet msg);
     std::vector<geometry_msgs::Point> CalculateRelativePose (Marcador Marca, geometry_msgs::Pose CamaraMundo);
 
 
@@ -482,12 +482,12 @@ AmclNode::AmclNode() :
 
   //For Camera PF
   XmlRpc::XmlRpcValue marker_list,camera_list;
-  private_nh_.getParam("/particle_filter/IMAGE_WIDTH",image_width);
-  private_nh_.getParam("/particle_filter/MARKER_HEIGHT",marker_height);
-  private_nh_.getParam("/particle_filter/MARKER_WIDTH",marker_width);
-  private_nh_.getParam("/particle_filter/NUM_CAM",num_cam);
-  private_nh_.getParam("/particle_filter/marker_positions",marker_list);
-  private_nh_.getParam("/particle_filter/camera_positions",camera_list);
+  private_nh_.getParam("/amcl_doris/IMAGE_WIDTH",marker_->image_width);
+  private_nh_.getParam("/amcl_doris/MARKER_HEIGHT",marker_height);
+  private_nh_.getParam("/amcl_doris/MARKER_WIDTH",marker_width);
+  private_nh_.getParam("/amcl_doris/NUM_CAM",marker_->num_cam);
+  private_nh_.getParam("/amcl_doris/marker_positions",marker_list);
+  private_nh_.getParam("/amcl_doris/camera_positions",camera_list);
 
   //Reading mapfile
   std::vector<geometry_msgs::Pose> Centros;
@@ -540,7 +540,7 @@ AmclNode::AmclNode() :
   this->publicar_cam3= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam3",1);
   this->publicar_mapa= private_nh_.advertise<visualization_msgs::Marker> ("mapa",1);
   this->detector_subs= private_nh_.subscribe<sensor_msgs::Image> ("detector_output",1,&AmclNode::imageCallback,this);
-  this->corners_subs=private_nh_.subscribe<detector::detector>("detection",1,&AmclNode::detectionCallback,this);
+  this->corners_subs=private_nh_.subscribe<detector::messagedet>("detection",1,&AmclNode::detectionCallback,this);
   this->loadTFCameras(cameras);
   this->LoadMapMarkers(IDs,Centros);
 }
@@ -1716,81 +1716,31 @@ void AmclNode::imageCallback(const sensor_msgs::ImageConstPtr& msg){
 
 }
 
-std::vector<geometry_msgs::Point> AmclNode::CalculateRelativePose (Marcador Marca, geometry_msgs::Pose CamaraMundo){
-    //Pose CAM;
-    tf::Transform MundTrob, invMundTrob,RobTCam,invRobotTCam;
-    tf::Quaternion RotCam;
-    //From Robot base to camera
-    RotCam.setRPY(-M_PI/2,0,-M_PI/2);//Pich de M_PI/2
-    RobTCam.setOrigin(tf::Vector3(0,0,1.4));
-    RobTCam.setRotation(RotCam);
-    tf::Quaternion QMundRCam (CamaraMundo.orientation.x,CamaraMundo.orientation.y,CamaraMundo.orientation.z,CamaraMundo.orientation.w);
-    tf::Vector3 Trasl1 (CamaraMundo.position.x,CamaraMundo.position.y,CamaraMundo.position.z);
-    //From World to Robot
-    MundTrob.setRotation(QMundRCam);
-    MundTrob.setOrigin(Trasl1);
-    //Inverse the transformation--> inversa del mundo a la camara
-    invRobotTCam=RobTCam.inverse();
-    invMundTrob = MundTrob.inverse();
-    geometry_msgs::TransformStamped MundTrobSt, RobotTCamSt;
-    MundTrobSt.header.frame_id="ground_plane__link";
-    MundTrobSt.child_frame_id="EstimatedPose";
-    RobotTCamSt.header.frame_id="EstimatedPose";
-    RobotTCamSt.child_frame_id="camera_link";
-    transformTFToMsg(MundTrob,MundTrobSt.transform);
-    transformTFToMsg(RobTCam,RobotTCamSt.transform);
-    this->br_marker.sendTransform(MundTrobSt);
-    this->br_marker.sendTransform(RobotTCamSt);
 
-    //Pose Transformation
-    geometry_msgs::TransformStamped invMundTrobStamped,invRobotTCamSt;
-    transformTFToMsg(invMundTrob,invMundTrobStamped.transform);
-    transformTFToMsg(invRobotTCam,invRobotTCamSt.transform);
-    std::vector<geometry_msgs::Point> RelativaCorners,PoseWorld;
-    //std::vector<geometry_msgs::Transform> Corners = Marca.getTransformCorners();
-    PoseWorld=Marca.getPoseWorld();
-    for (int i=0;i<4;i++){
-            geometry_msgs::PointStamped CornerRelPose,Inter,WorldPose;
-            WorldPose.point=PoseWorld[i];
-             tf2::doTransform(WorldPose,Inter,invMundTrobStamped);
-             tf2::doTransform(Inter,CornerRelPose,invRobotTCamSt);
-            RelativaCorners.push_back(CornerRelPose.point);
-
-        }
-    //cout<<"Tengo la posicion relativa"<<endl;
-    return RelativaCorners;
-
-
-
-}
 //Include all functions in callback
-void AmclNode::detectionCallback (const detector::detector msg){
+void AmclNode::detectionCallback (const detector::messagedet msg){
+    std::vector<Marcador> observation;
     for(int i=0;i<msg.DetectedMarkers.size();i++){
-        Marcador Marker;
+        Marcador marker;
         std::vector<cv::Point2f> corners;
-        Marker.setMarkerId(msg.DetectedMarkers[i].ID);
+        marker.setMarkerId(int(msg.DetectedMarkers[i].ID.data));
         for (int j=0;j<4;j++){
             cv::Point2f corner;
             corner.x=msg.DetectedMarkers[i].Corners[j].x;
             corner.y=msg.DetectedMarkers[i].Corners[j].y;
             corners.push_back(corner);
         }
-        Marker.MarkerPoints(corners);
-        this->marker_->temp_obs.push_back(Marker);
+        marker.MarkerPoints(corners);
+        observation.push_back(marker);
     }
-    if(!(this->marker_->image_filter.empty())){
-    for (int j=0;j<this->marker_->map.size();j++){
-    geometry_msgs::Pose Supuesta;
-    Supuesta.position.x=0;
-    Supuesta.position.y=0;
-    Supuesta.position.z=0;
-    tf::Quaternion Quat;
-    tf::Matrix3x3 Mat;
-    geometry_msgs::Quaternion QuatMs;
-    Mat.setRPY(0,0,0);
-    Mat.getRotation(Quat);
-    tf::quaternionTFToMsg (Quat,QuatMs);
-    Supuesta.orientation=QuatMs;
-    std::vector<cv::Point2d> proyeccion;
-    std::vector<geometry_msgs::Point> Relative=this->CalculateRelativePose(this->map[j],Supuesta);
+    cout<<observation.size()<<endl;
+    if(!observation.empty()){
+
+    //Actualize filter with observation
+    AMCLMarkerData mdata;
+    mdata.sensor=this->marker_;
+    mdata.markers_obs=observation;
+
+    marker_->UpdateSensor(pf_,(AMCLMarkerData*) &mdata);
+}
 }

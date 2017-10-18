@@ -23,7 +23,7 @@
 #include <tf/transform_broadcaster.h>
 #include <geometry_msgs/PoseArray.h>
 #include <detector/marker.h>
-#include <detector/detector.h>
+#include <detector/messagedet.h>
 
 
 
@@ -48,7 +48,7 @@ public:
     cv::Size markerSize;
     ros::Subscriber odometry, sub_cam1, sub_cam2,sub_cam3;
     ros::Publisher publish_detection;
-    detector::detector msg_detected;
+    //detector::detector msg_detected;
 
     //Constructor and Destructor
     cDetector(const ros::NodeHandle& nh,  const ros::NodeHandle& nh_private);

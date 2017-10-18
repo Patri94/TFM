@@ -27,7 +27,7 @@
 #include <sensor_msgs/Image.h>
 #include <XmlRpcException.h>
 #include <detector/marker.h>
-#include <detector/detector.h>
+#include <detector/messagedet.h>
 
 #define BLOCK_SIZE_FOR_ADAPTIVE_THRESHOLD 75
 #define CELL_MARKER_SIZE 7
@@ -61,7 +61,16 @@ cDetector::cDetector ( const ros::NodeHandle& nh,const ros::NodeHandle& nh_priva
 
 
     //Initialize publishers
-     this->publish_detection=nh_.advertise<detector::detector>("detection",1);
+     this->publish_detection=nh_.advertise<detector::messagedet>("detection",1,true);
+    //detector::detector msg_det;
+   /* geometry_msgs::Point corner;
+    detector::marker detected;
+    corner.x=1.0;
+    corner.y=1.0;
+    corner.z=1.0;
+    detected.Corners.push_back(corner);
+     msg_det.DetectedMarkers.push_back(detected);*/
+     //publish_detection.publish(msg_det);
 
 
     //Size of markers for the detector
@@ -462,49 +471,24 @@ void cDetector::recognizeMarkers(){
 }
 }
 void cDetector::createMessage(void){
-
     if (!(this->comb.empty())){
-        detector::detector msg_det;
-
-      /* detector::marker detected;
-      geometry_msgs::Point corner;
-      corner.x=1.0;
-      corner.y=1.0;
-      corner.z=1.0;
-      detected.Corners.push_back(corner);
-       msg_det.DetectedMarkers.push_back(detected);//*/
+        detector::messagedet msg_det;
        for (int i=0;i<this->OptMarkers.size();i++){
                 detector::marker detected;
                 std::vector<cv::Point2f> corners_f =this->OptMarkers[i].getMarkerPoints();
                 for (int j=0;j<4;j++){
-
-                        geometry_msgs::Point corner;
-                        corner.x=corners_f[j].x;
-                        corner.y=corners_f[j].y;
+                        geometry_msgs::Point32 corner;
+                        corner.x=(float)corners_f[j].x;
+                        corner.y=(float)corners_f[j].y;
                         corner.z=0.0;
                         detected.Corners.push_back(corner);
                     }
-                detected.ID=this->OptMarkers[i].getMarkerID();
+                detected.ID.data=uint8_t(this->OptMarkers[i].getMarkerID());
                 msg_det.DetectedMarkers.push_back(detected);
-
-
       }
         cout<<"detectados"<<msg_det.DetectedMarkers.size()<<endl;
-         for (int i=0; i<msg_det.DetectedMarkers.size();i++){
-             for (int j=0;j<4;j++){
-             cout<< msg_det.DetectedMarkers[i].Corners[j].x<<endl;
-                    cout<< msg_det.DetectedMarkers[i].Corners[j].y<<endl;
-                    cout<< msg_det.DetectedMarkers[i].Corners[j].z<<endl;
-
-             }
-             cout<< msg_det.DetectedMarkers[i].ID<<endl;
-         }
          this->pub_comb.publish(this->comb_msg);
          this->publish_detection.publish(msg_det);
-
-
-
-
         }
 
 }

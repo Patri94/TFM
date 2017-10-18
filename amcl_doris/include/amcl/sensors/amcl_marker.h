@@ -84,12 +84,15 @@ class AMCLMarker : public AMCLSensor
   // Determine the probability for the given pose
   private: static double LikelihoodFieldModel(AMCLMarkerData *data,
                                               pf_sample_set_t* set);
+  private:std::vector<geometry_msgs::Point> CalculateRelativePose (Marcador Marca, geometry_msgs::Pose CamaraMundo);
   private: void LoadCameraInfo(void);
-  private: std::vector<cv::Point2d> projectPoints(visualization_msgs::Marker cam_center_coord, float width, float cam);
+  private: std::vector<cv::Point2d> projectPoints(std::vector<geometry_msgs::Point> cam_center_coord);
+  private:float calculateMeanError(std::vector<cv::Point2f> projection_detected, std::vector<cv::Point2d> projection_map);
   private: marker_model_t model_type;
 
   // Current data timestamp
   private: double time;
+  public:float  marker_width, num_cam,marker_height,image_width;
 
   // The marker map
   public: std::vector<Marcador> map;

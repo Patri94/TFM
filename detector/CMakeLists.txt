@@ -27,7 +27,7 @@ find_package (OpenCV REQUIRED)
  add_message_files(
 	FILES 
 	marker.msg
-	detector.msg
+	messagedet.msg
  )
 generate_messages(
    DEPENDENCIES
