@@ -213,7 +213,7 @@
              </limit>
            </axis>
         </joint>
-        <joint type='revolute' name='plat_cam'>
+        <joint type='revolute' name='plat_cam3'>
            <pose>-0.1 -0.173 1.35 0 0 -2.093</pose>
             <child>Camara3::linkCam3</child>
            <parent>plataforma</parent> 
@@ -253,9 +253,6 @@
           <xyz>0 1 0</xyz>
         </axis>
       </joint>
-	<!--<gazebo reference="chassis">
-    		<material>Gazebo/Blue</material>
- 	</gazebo> -->
     <include>
       <uri>model://Hokuyo_Laser</uri>
       <pose>0.1 0 0.397 0 0 0</pose>

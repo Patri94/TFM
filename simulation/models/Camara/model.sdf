@@ -55,12 +55,6 @@
             <near>0.1</near>
             <far>100</far>
           </clip>
-          <!--<lens>
-            <type>stereographic</type>
-            <scale_to_hfov>true</scale_to_hfov>
-            <cutoff_angle>1.5707</cutoff_angle>
-            <env_texture_size>512</env_texture_size>
-          </lens>-->
         </camera>
         <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
         <alwaysOn>true</alwaysOn>
@@ -72,17 +66,11 @@
         <hackBaseline>0.07</hackBaseline>
         <Cx>906</Cx>
         <Cy>339.5</Cy>
-	<!--<focal_length> 8.5101024687735935e+02</focal_length>-->
         <distortionK1>-2.6019586095779829e-001</distortionK1>
         <distortionK2>5.5052401922323718e-002</distortionK2>
         <distortionK3>0.0</distortionK3>
         <distortionT1>0.0</distortionT1>
         <distortionT2>-4.5449850126361765e-003</distortionT2>
-        <!--<distortionK1>0.0</distortionK1>
-        <distortionK2>0.0</distortionK2>
-        <distortionK3>0.0</distortionK3>
-        <distortionT1>0.0</distortionT1>
-        <distortionT2>0.0</distortionT2>-->
       </plugin>
       </sensor>
     </link>

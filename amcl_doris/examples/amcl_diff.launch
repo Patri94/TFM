@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <launch>
  <arg name="markers_file_name" default="map"/>
     <arg name="marker_positions_file" default="$(find amcl_doris)/maps/$(arg markers_file_name).yaml" />
@@ -43,5 +44,8 @@
 	<param name="MARKER_HEIGHT" value = "0.545985" />
 	<param name="MARKER_WIDTH" value = "0.3777" />
 	<param name="NUM_CAM" value ="3" />
+<param name="global_frame_id" value="gazebo_world"/>
+<param name = "marker_model_type" value="observation_likelihood"/>
+
 </node>
 </launch>

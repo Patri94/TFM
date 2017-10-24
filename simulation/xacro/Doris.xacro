@@ -1,0 +1,187 @@
+<?xml version='1.0' ?>
+<robot name = "Doris" xmlns:xacro="http://www.ros.org/wiki/xacro">
+	<link name='cuerpo'>
+		<inertial>
+			<inertia  ixx="1.0" ixy="0.0"  ixz="0.0"  iyy="1.0"  iyz="0.0"  izz="1.0" />	                <origin xyz = "0 0 0.165" rpy ="0 0 0"/>
+			<mass value= "10" />
+		</inertial>
+		<visual>
+			<origin xyz = "0 0 0.165" rpy ="0 0 0"/>
+			<geometry>
+				<cylinder radius="0.30" length="0.33" />
+			</geometry>	
+		</visual>
+		<collision>
+			<origin xyz = "0 0 0.165" rpy ="0 0 0"/>
+			<geometry>
+				<cylinder radius="0.30" length="0.33" />
+			</geometry>	
+		</collision>
+	</link>
+	<joint name="right_axis" type="revolute" >
+		<origin xyz = "0 -0.15 0" rpy ="0 0 0"/>
+		<parent link = "cuerpo"/>
+		<child link= "right_wheel"/>
+		<axis xyz="0 1 0"/>
+		<limit effort="30" velocity="0.1" lower="${-2*pi}" upper="${2*pi}"/>
+	</joint>
+	<link name='right_wheel'>
+		<inertial>
+			<inertia  ixx="1.0" ixy="0.0"  ixz="0.0"  iyy="1.0"  iyz="0.0"  izz="1.0" />	                <origin xyz = "0 0 0" rpy ="0 1.5707 1.5707"/>
+			<mass value= "0.3" />
+		</inertial>
+		<visual>
+			<origin xyz = "0 0 0" rpy ="0 1.5707 1.5707"/>
+			<geometry>
+				<cylinder radius="0.05" length="0.05" />
+			</geometry>	
+		</visual>
+		<collision>
+			<origin xyz = "0 0 0" rpy ="0 1.5707 1.5707"/>
+			<geometry>
+				<cylinder radius="0.05" length="0.05" />
+			</geometry>	
+		</collision>
+		
+	</link>
+	<joint name="left_axis" type="revolute" >
+		<origin xyz = "0 0.15 0" rpy ="0 0 0"/>
+		<parent link = "cuerpo"/>
+		<child link= "left_wheel"/>
+		<axis xyz="0 1 0"/>
+		<limit effort="30" velocity="0.1" lower="${-2*pi}" upper="${2*pi}"/>
+	</joint>
+	<link name='left_wheel'>
+		<inertial>
+			<inertia  ixx="1.0" ixy="0.0"  ixz="0.0"  iyy="1.0"  iyz="0.0"  izz="1.0" />	                <origin xyz = "0 0 0" rpy ="0 1.5707 1.5707"/>
+			<mass value= "0.3" />
+		</inertial>
+		<visual>
+			<origin xyz = "0 0 0" rpy =" 0 1.5707 1.5707"/>
+			<geometry>
+				<cylinder radius="0.05" length="0.05" />
+			</geometry>	
+		</visual>
+		<collision>
+			<origin xyz = "0 0 0" rpy =" 0 1.5707 1.5707"/>
+			<geometry>
+				<cylinder radius="0.05" length="0.05" />
+			</geometry>	
+		</collision>
+		
+	</link>
+	<joint name="mastil_cuerpo" type="fixed" >
+		<origin xyz = "0 0 0.33" rpy ="0 0 0"/>
+		<parent link = "cuerpo"/>
+		<child link= "mastil"/>
+		<axis xyz="0 0 1"/>
+	</joint>
+	<link name='mastil'>
+		<inertial>
+			<inertia  ixx="1.0" ixy="0.0"  ixz="0.0"  iyy="1.0"  iyz="0.0"  izz="1.0" />	                <origin xyz = "0 0 0.475" rpy ="0 0 0"/>
+			<mass value= "2" />
+		</inertial>
+		<visual>
+			<origin xyz = "0 0 0.475" rpy =" 0 0 0"/>
+			<geometry>
+				<box size="0.1 0.1 0.95" />
+			</geometry>	
+		</visual>
+		<collision>
+			<origin xyz = "0 0 0.475" rpy =" 0 0 0"/>
+			<geometry>
+				<box size="0.1 0.1 0.95" />
+			</geometry>	
+		</collision>
+	</link>
+	<joint name="mastil_plat" type="fixed" >
+		<origin xyz = "0 0 0.95" rpy ="0 0 0"/>
+		<parent link = "mastil"/>
+		<child link= "plataforma"/>
+		<axis xyz="0 0 1"/>
+	</joint>
+	<link name='plataforma'>
+		<inertial>
+			<inertia  ixx="1.0" ixy="0.0"  ixz="0.0"  iyy="1.0"  iyz="0.0"  izz="1.0"/>	                <origin xyz = "0 0 0.0125" rpy ="0 0 0"/>
+			<mass value= "0.3" />
+		</inertial>
+		<visual>
+			<origin xyz = "0 0 0.0125" rpy ="0 0 0"/>
+			<geometry>
+				<cylinder radius="0.1" length="0.025" />
+			</geometry>	
+		</visual>
+		<collision>
+			<origin xyz = "0 0 0.0125" rpy ="0 0 0"/>
+			<geometry>
+				<cylinder radius="0.1" length="0.025" />
+			</geometry>	
+		</collision>
+		
+	</link>
+	<joint name="contrap_cuerpo" type="fixed" >
+		<origin xyz = "-0.1 0 0.33" rpy ="0 0 0"/>
+		<parent link = "cuerpo"/>
+		<child link= "contrapeso"/>
+		
+	</joint>
+	<link name='contrapeso'>
+		<inertial>
+			<inertia  ixx="1.0" ixy="0.0"  ixz="0.0"  iyy="1.0"  iyz="0.0"  izz="1.0" />	                <origin xyz = "0 0 0.0125" rpy ="0 0 0"/>
+			<mass value= "0.040046547" />
+		</inertial>
+		<visual>
+			<origin xyz = "0 0 0.0125" rpy ="0 0 0"/>
+			<geometry>
+				<cylinder radius="0.03" length="0.025" />
+			</geometry>	
+		</visual>
+		<collision>
+			<origin xyz = "0 0 0.0125" rpy ="0 0 0"/>
+			<geometry>
+				<cylinder radius="0.03" length="0.025" />
+			</geometry>	
+		</collision>		
+	</link>
+	
+	
+	
+	
+	
+	
+	<xacro:include filename= 'mycasterwheel.xacro'/>
+	<xacro:include filename= "mycamera.xacro"/>
+	<xacro:include filename= "mylaser.xacro"/>
+	<xacro:mycamera parent="plataforma" prefix="cam1" pose_xyz="0.1 0 0.0625" pose_rpy="0 0 0" />
+	<xacro:mycamera parent="plataforma" prefix="cam2" pose_xyz="-0.05 0.08660254 0.0625" pose_rpy="0 0 2.093" />
+	<xacro:mycamera parent="plataforma" prefix="cam3" pose_xyz="-0.05 -0.08660254 0.0625" pose_rpy="0 0 -2.093"/>
+	<xacro:mycasterwheel parent="cuerpo" prefix="cas1" pose_xyz="-0.2 -0.15 0" pose_rpy="0 0 0"/>
+	<xacro:mycasterwheel parent="cuerpo" prefix="cas2" pose_xyz="0.2 -0.15 0" pose_rpy="0 0 0"/>
+	<xacro:mycasterwheel parent="cuerpo" prefix="cas3" pose_xyz=" -0.2 0.15 0" pose_rpy="0 0 0"/>
+	<xacro:mycasterwheel parent="cuerpo" prefix="cas4" pose_xyz="0.2 0.15 0" pose_rpy="0 0 0"/>
+	<xacro:mylaser parent="cuerpo" prefix="laser" pose_xyz="0.1 0 0.35" pose_rpy="0 0 0"/>
+	<gazebo>
+		<plugin name="differential_drive_controller" filename="libgazebo_ros_diff_drive.so">
+  			<alwaysOn>true</alwaysOn>
+  			<updateRate>20</updateRate>
+  			<leftJoint>right_axis</leftJoint>
+  			<rightJoint>left_axis</rightJoint>
+  			<wheelSeparation>0.1</wheelSeparation>
+			<publishWheelTF>true</publishWheelTF>
+			<publishWheelJointState>true</publishWheelJointState>
+  			<wheelDiameter>0.1</wheelDiameter>
+  			<torque>20</torque>
+  			<commandTopic>cmd_vel</commandTopic>
+  			<odometryTopic>odom</odometryTopic>
+  			<odometryFrame>odom</odometryFrame>
+  			<robotBaseFrame>cuerpo</robotBaseFrame>
+  			<legacyMode>true</legacyMode>
+  			</plugin>
+	</gazebo>
+	
+	
+	
+	
+	
+
+</robot>

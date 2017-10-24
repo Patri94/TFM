@@ -40,11 +40,11 @@ using namespace amcl;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Default constructor
-AMCLMarker::AMCLMarker(std::vector<Marcador> map) : AMCLSensor()
+AMCLMarker::AMCLMarker() : AMCLSensor()
 
 {
 
-  this->map = map;
+  //this->map = map;
   this->LoadCameraInfo();
 
 
@@ -65,7 +65,7 @@ AMCLMarker::SetModelLikelihoodField(double z_hit,
                                    double z_rand,
                                    double sigma_hit)
 {
-  this->model_type = MARKER_MODEL_LIKELIHOOD_FIELD;
+  this->model_type = MARKER_MODEL_LIKELIHOOD;
   this->z_hit = z_hit;
   this->z_rand = z_rand;
   this->sigma_hit = sigma_hit;
@@ -81,16 +81,20 @@ AMCLMarker::SetModelLikelihoodField(double z_hit,
 bool AMCLMarker::UpdateSensor(pf_t *pf, AMCLSensorData *data)
 {
   // Apply the laser sensor model
- if(this->model_type == MARKER_MODEL_LIKELIHOOD_FIELD)
-    pf_update_sensor(pf, (pf_sensor_model_fn_t) LikelihoodFieldModel, data);  
+    cout<<"update sensor marker cpp"<<endl;
+ if(this->model_type == MARKER_MODEL_LIKELIHOOD)
+    cout<<"afterif"<<endl;
+    //cout<<data->sensor->markers_obs.size()<<endl;
+    pf_update_sensor(pf, (pf_sensor_model_fn_t) ObservationLikelihood, data);
   return true;
 }
 
 
 
 
-double AMCLMarker::LikelihoodFieldModel(AMCLMarkerData *data, pf_sample_set_t* set)
+double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* set)
 {
+  cout<<"in particle filter"<<endl;
   AMCLMarker *self;
   pf_sample_t *sample;
   pf_vector_t pose;
@@ -101,9 +105,8 @@ double AMCLMarker::LikelihoodFieldModel(AMCLMarkerData *data, pf_sample_set_t* s
   total_weight = 0.0;
   int i;
   std::vector<Marcador> detected_from_map;
-  //DO stuff
 
-  //Extract only detected markers from map from map
+  //Extract only detected markers from map
   for(int k=0;k<self->map.size();k++){
       for (int j=0; j<data->markers_obs.size();j++){
           if(self->map[k].getMarkerID()==data->markers_obs[j].getMarkerID()){
@@ -136,7 +139,11 @@ double AMCLMarker::LikelihoodFieldModel(AMCLMarkerData *data, pf_sample_set_t* s
           //Calculate projection of marker corners
           std::vector<geometry_msgs::Point> relative_to_cam=self->CalculateRelativePose(detected_from_map[j],sample_pose);
           std::vector<cv::Point2d> projection=self->projectPoints(relative_to_cam);
-
+          line (self->image_filter,projection[0], projection[1],Scalar(0,0,255),1);
+          line (self->image_filter,projection[1], projection[2],Scalar(0,0,255),1);
+          line (self->image_filter,projection[2], projection[3],Scalar(0,0,255),1);
+          line (self->image_filter,projection[3], projection[0],Scalar(0,0,255),1);
+          imshow("Proyeccion",self->image_filter);
           //Calculate mean error in pixels
           z=self->calculateMeanError(data->markers_obs[i].getMarkerPoints(),projection);
 

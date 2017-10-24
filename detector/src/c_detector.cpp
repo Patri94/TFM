@@ -48,20 +48,20 @@ cDetector::cDetector ( const ros::NodeHandle& nh,const ros::NodeHandle& nh_priva
 {
     //Load Parameters
     float  image_width, marker_height, marker_width, num_cam;
-    XmlRpc::XmlRpcValue marker_list;
-    nh_.getParam("/detector/IMAGE_WIDTH",image_width);
-
+    //XmlRpc::XmlRpcValue marker_list;
+     nh_.getParam("/detector/IMAGE_WIDTH",image_width);
+    //cout<<marker_list.size()<<endl;
     //Initialize subscribers for cameras
-    sub_cam1=nh_.subscribe<sensor_msgs::Image> ("/Doris/camera1/image_raw",1,&cDetector::infoCallback,this);
-    sub_cam2=nh_.subscribe<sensor_msgs::Image> ("/Doris/camera2/image_raw",1,&cDetector::imageCallback2,this);
-    sub_cam3=nh_.subscribe<sensor_msgs::Image> ("/Doris/camera3/image_raw",1,&cDetector::imageCallback3,this);
+    sub_cam1=nh_.subscribe<sensor_msgs::Image> ("Doris/cam1/image_raw",1,&cDetector::infoCallback,this);
+    sub_cam2=nh_.subscribe<sensor_msgs::Image> ("Doris/cam2/image_raw",1,&cDetector::imageCallback2,this);
+    sub_cam3=nh_.subscribe<sensor_msgs::Image> ("Doris/cam3/image_raw",1,&cDetector::imageCallback3,this);
 
     image_transport::ImageTransport it(nh_);
-    this->pub_comb=it.advertise("detector_output",1);
+    this->pub_comb=it.advertise("/DetectorNode/detector_output",1);
 
 
     //Initialize publishers
-     this->publish_detection=nh_.advertise<detector::messagedet>("detection",1,true);
+     this->publish_detection=nh_.advertise<detector::messagedet>("/DetectorNode/detection",1,true);
     //detector::detector msg_det;
    /* geometry_msgs::Point corner;
     detector::marker detected;

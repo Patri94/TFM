@@ -38,10 +38,10 @@
         <uri>model://Tag5</uri>
         <pose>0.707 6.675 2.5 0 0 3.14</pose>
     </include>
-    <include>
+    <!--<include>
         <uri>model://Doris</uri>
         <pose>2 1 0 0 0 1.57</pose>
-    </include>
+    </include>-->
     <model name='ground_plane'>
       <static>1</static>
       <link name='link'>

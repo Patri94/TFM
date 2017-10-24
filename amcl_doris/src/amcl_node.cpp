@@ -155,8 +155,8 @@ class AmclNode
                                     std_srvs::Empty::Response& res);
     bool nomotionUpdateCallback(std_srvs::Empty::Request& req,
                                     std_srvs::Empty::Response& res);
-    bool setMapCallback(nav_msgs::SetMap::Request& req,
-                        nav_msgs::SetMap::Response& res);
+   // bool setMapCallback(nav_msgs::SetMap::Request& req,
+                        //nav_msgs::SetMap::Response& res);
 
     void laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan);
     void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
@@ -226,7 +226,7 @@ class AmclNode
     // For slowing play-back when reading directly from a bag file
     ros::WallDuration bag_scan_period_;
 
-    void requestMap();
+    //void requestMap();
 
     // Helper to get odometric pose from transform system
     bool getOdomPose(tf::Stamped<tf::Pose>& pose,
@@ -268,6 +268,7 @@ class AmclNode
     double init_pose_[3];
     double init_cov_[3];
     laser_model_t laser_model_type_;
+    marker_model_t marker_model_type_;
     bool tf_broadcast_;
 
     void reconfigureCB(amcl::AMCLConfig &config, uint32_t level);
@@ -316,10 +317,15 @@ main(int argc, char** argv)
 
   // Override default sigint handler
   signal(SIGINT, sigintHandler);
-
+  ros::Rate r(10);
   // Make our node available to sigintHandler
-  amcl_node_ptr.reset(new AmclNode());
-
+  //amcl_node_ptr.reset(new AmclNode());
+  AmclNode node;
+  while(ros::ok()){
+      ros::spinOnce();
+      r.sleep();
+  }
+  /*
   if (argc == 1)
   {
     // run using ROS input
@@ -331,7 +337,7 @@ main(int argc, char** argv)
   }
 
   // Without this, our boost locks are not shut down nicely
-  amcl_node_ptr.reset();
+  amcl_node_ptr.reset();*/
 
   // To quote Morgan, Hooray!
   return(0);
@@ -345,23 +351,24 @@ AmclNode::AmclNode() :
         resample_count_(0),
         odom_(NULL),
         laser_(NULL),
+        marker_(NULL),
 	      private_nh_("~"),
         initial_pose_hyp_(NULL),
         first_map_received_(false),
         first_reconfigure_call_(true)
 {
   boost::recursive_mutex::scoped_lock l(configuration_mutex_);
-
+  cout<<"1"<<endl;
   // Grab params off the param server
   private_nh_.param("use_map_topic", use_map_topic_, false);
   private_nh_.param("first_map_only", first_map_only_, false);
-
+cout<<"2"<<endl;
   double tmp;
   private_nh_.param("gui_publish_rate", tmp, -1.0);
   gui_publish_period = ros::Duration(1.0/tmp);
   private_nh_.param("save_pose_rate", tmp, 0.5);
   save_pose_period = ros::Duration(1.0/tmp);
-
+cout<<"3"<<endl;
   private_nh_.param("laser_min_range", laser_min_range_, -1.0);
   private_nh_.param("laser_max_range", laser_max_range_, -1.0);
   private_nh_.param("laser_max_beams", max_beams_, 30);
@@ -374,12 +381,12 @@ AmclNode::AmclNode() :
   private_nh_.param("odom_alpha3", alpha3_, 0.2);
   private_nh_.param("odom_alpha4", alpha4_, 0.2);
   private_nh_.param("odom_alpha5", alpha5_, 0.2);
-  
+cout<<"4"<<endl;
   private_nh_.param("do_beamskip", do_beamskip_, false);
   private_nh_.param("beam_skip_distance", beam_skip_distance_, 0.5);
   private_nh_.param("beam_skip_threshold", beam_skip_threshold_, 0.3);
   private_nh_.param("beam_skip_error_threshold_", beam_skip_error_threshold_, 0.9);
-
+cout<<"5"<<endl;
   private_nh_.param("laser_z_hit", z_hit_, 0.95);
   private_nh_.param("laser_z_short", z_short_, 0.1);
   private_nh_.param("laser_z_max", z_max_, 0.05);
@@ -402,7 +409,12 @@ AmclNode::AmclNode() :
              tmp_model_type.c_str());
     laser_model_type_ = LASER_MODEL_LIKELIHOOD_FIELD;
   }
-
+  std::string tmp_marker_model_type;
+  private_nh_.param("marker_model_type",tmp_marker_model_type,std::string("observation_likelihood"));
+  if (tmp_marker_model_type=="observation_likelihood"){
+      marker_model_type_=MARKER_MODEL_LIKELIHOOD;
+  }
+cout<<"6"<<endl;
   private_nh_.param("odom_model_type", tmp_model_type, std::string("diff"));
   if(tmp_model_type == "diff")
     odom_model_type_ = ODOM_MODEL_DIFF;
@@ -418,7 +430,7 @@ AmclNode::AmclNode() :
              tmp_model_type.c_str());
     odom_model_type_ = ODOM_MODEL_DIFF;
   }
-
+cout<<"8"<<endl;
   private_nh_.param("update_min_d", d_thresh_, 0.2);
   private_nh_.param("update_min_a", a_thresh_, M_PI/6.0);
   private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
@@ -438,57 +450,68 @@ AmclNode::AmclNode() :
     private_nh_.param("bag_scan_period", bag_scan_period, -1.0);
     bag_scan_period_.fromSec(bag_scan_period);
   }
-
+cout<<"9"<<endl;
   updatePoseFromServer();
-
+cout<<"10"<<endl;
   cloud_pub_interval.fromSec(1.0);
   tfb_ = new tf::TransformBroadcaster();
   tf_ = new TransformListenerWrapper();
 
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
   particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
-  global_loc_srv_ = nh_.advertiseService("global_localization", 
-					 &AmclNode::globalLocalizationCallback,
-                                         this);
+  //global_loc_srv_ = nh_.advertiseService("global_localization",
+                                        // &AmclNode::globalLocalizationCallback,
+                                         //this);
   nomotion_update_srv_= nh_.advertiseService("request_nomotion_update", &AmclNode::nomotionUpdateCallback, this);
-  set_map_srv_= nh_.advertiseService("set_map", &AmclNode::setMapCallback, this);
 
-  laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
-  laser_scan_filter_ = 
-          new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_, 
+  //set_map_srv_= nh_.advertiseService("set_map", &AmclNode::setMapCallback, this);
+
+  //laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
+  //laser_scan_filter_ =
+          /*new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_,
                                                         *tf_, 
                                                         odom_frame_id_, 
-                                                        100);
-  laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
-                                                   this, _1));
-  initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
+                                                        100);*/
 
-  if(use_map_topic_) {
+  //laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
+                                                 //  this, _1));
+  initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
+cout<<"11"<<endl;
+  /*if(use_map_topic_) {
     map_sub_ = nh_.subscribe("map", 1, &AmclNode::mapReceived, this);
     ROS_INFO("Subscribed to map topic.");
   } else {
-    requestMap();
-  }
+    //requestMap();
+  }*/
   m_force_update = false;
 
   dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
-  dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
-  dsrv_->setCallback(cb);
+ // dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
+ // dsrv_->setCallback(cb);
 
   // 15s timer to warn on lack of receipt of laser scans, #5209
-  laser_check_interval_ = ros::Duration(15.0);
-  check_laser_timer_ = nh_.createTimer(laser_check_interval_, 
-                                       boost::bind(&AmclNode::checkLaserReceived, this, _1));
+  //laser_check_interval_ = ros::Duration(15.0);
+  //check_laser_timer_ = nh_.createTimer(laser_check_interval_,
+                                       //boost::bind(&AmclNode::checkLaserReceived, this, _1));
 
+  cout<<"llego a camara"<<endl;
+  marker_= new AMCLMarker();
   //For Camera PF
   XmlRpc::XmlRpcValue marker_list,camera_list;
-  private_nh_.getParam("/amcl_doris/IMAGE_WIDTH",marker_->image_width);
+  float image_width_;
+  private_nh_.getParam("/amcl_doris/IMAGE_WIDTH",image_width_);
+  marker_->image_width=image_width_;
+  cout<<"camparams1ok"<<endl;
+
   private_nh_.getParam("/amcl_doris/MARKER_HEIGHT",marker_height);
+
+
   private_nh_.getParam("/amcl_doris/MARKER_WIDTH",marker_width);
+
   private_nh_.getParam("/amcl_doris/NUM_CAM",marker_->num_cam);
   private_nh_.getParam("/amcl_doris/marker_positions",marker_list);
   private_nh_.getParam("/amcl_doris/camera_positions",camera_list);
-
+cout<<"camparamsOK"<<endl;
   //Reading mapfile
   std::vector<geometry_msgs::Pose> Centros;
   std::vector<int> IDs;
@@ -512,9 +535,10 @@ AmclNode::AmclNode() :
           IDs.push_back(marker_list[i]["ID"]);
 
       }
+  cout<<"centros"<<Centros.size()<<endl;
   //Reading camerafile
   std::vector<geometry_msgs::Pose> cameras;
-  for(int i=0;i<marker_list.size();i++){
+  for(int i=0;i<camera_list.size();i++){
           tf::Matrix3x3 orientation;
           tf::Quaternion Quat;
           geometry_msgs::Pose temp_pose;
@@ -534,15 +558,19 @@ AmclNode::AmclNode() :
 
 }
 
+  cout<<"cam"<<cameras.size()<<endl;
+
   this->publicar= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose",1);
-  this->publicar_cam1= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam1",1);
-  this->publicar_cam2= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam2",1);
-  this->publicar_cam3= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam3",1);
-  this->publicar_mapa= private_nh_.advertise<visualization_msgs::Marker> ("mapa",1);
-  this->detector_subs= private_nh_.subscribe<sensor_msgs::Image> ("detector_output",1,&AmclNode::imageCallback,this);
-  this->corners_subs=private_nh_.subscribe<detector::messagedet>("detection",1,&AmclNode::detectionCallback,this);
+  //this->publicar_cam1= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam1",1);
+  //this->publicar_cam2= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam2",1);
+  //this->publicar_cam3= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam3",1);
+ //this->publicar_mapa= private_nh_.advertise<visualization_msgs::Marker> ("mapa",1);
+  this->detector_subs= private_nh_.subscribe<sensor_msgs::Image> ("/DetectorNode/detector_output",1,&AmclNode::imageCallback,this);
+  this->corners_subs=private_nh_.subscribe<detector::messagedet>("/DetectorNode/detection",1,&AmclNode::detectionCallback,this);
   this->loadTFCameras(cameras);
   this->LoadMapMarkers(IDs,Centros);
+
+  cout<<"constructorOK"<<endl;
 }
 
 void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
@@ -678,13 +706,13 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   global_frame_id_ = config.global_frame_id;
 
   delete laser_scan_filter_;
-  laser_scan_filter_ = 
+  /*laser_scan_filter_ =
           new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_, 
                                                         *tf_, 
                                                         odom_frame_id_, 
-                                                        100);
-  laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
-                                                   this, _1));
+                                                        100);*/
+ // laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
+                                                  // this, _1));
 
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
 }
@@ -841,7 +869,7 @@ void AmclNode::updatePoseFromServer()
     ROS_WARN("ignoring NAN in initial covariance AA");	
 }
 
-void 
+/*void
 AmclNode::checkLaserReceived(const ros::TimerEvent& event)
 {
   ros::Duration d = ros::Time::now() - last_laser_received_ts_;
@@ -851,9 +879,9 @@ AmclNode::checkLaserReceived(const ros::TimerEvent& event)
              d.toSec(),
              ros::names::resolve(scan_topic_).c_str());
   }
-}
+}*/
 
-void
+/*void
 AmclNode::requestMap()
 {
   boost::recursive_mutex::scoped_lock ml(configuration_mutex_);
@@ -869,9 +897,9 @@ AmclNode::requestMap()
     d.sleep();
   }
   handleMapMessage( resp.map );
-}
+}*/
 
-void
+/*void
 AmclNode::mapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   if( first_map_only_ && first_map_received_ ) {
@@ -881,9 +909,8 @@ AmclNode::mapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
   handleMapMessage( *msg );
 
   first_map_received_ = true;
-}
-
-void
+}*/
+/*void
 AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
 {
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
@@ -970,7 +997,7 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
   applyInitialPose();
 
 }
-
+*/
 void
 AmclNode::freeMapDependentMemory()
 {
@@ -992,7 +1019,7 @@ AmclNode::freeMapDependentMemory()
  * Convert an OccupancyGrid map message into the internal
  * representation.  This allocates a map_t and returns it.
  */
-map_t*
+/*map_t*
 AmclNode::convertMap( const nav_msgs::OccupancyGrid& map_msg )
 {
   map_t* map = map_alloc();
@@ -1017,7 +1044,7 @@ AmclNode::convertMap( const nav_msgs::OccupancyGrid& map_msg )
   }
 
   return map;
-}
+}*/
 
 AmclNode::~AmclNode()
 {
@@ -1120,7 +1147,7 @@ AmclNode::nomotionUpdateCallback(std_srvs::Empty::Request& req,
 	return true;
 }
 
-bool
+/*bool
 AmclNode::setMapCallback(nav_msgs::SetMap::Request& req,
                          nav_msgs::SetMap::Response& res)
 {
@@ -1128,9 +1155,9 @@ AmclNode::setMapCallback(nav_msgs::SetMap::Request& req,
   handleInitialPoseMessage(req.initial_pose);
   res.success = true;
   return true;
-}
+}*/
 
-void
+/*void
 AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
 {
   last_laser_received_ts_ = ros::Time::now();
@@ -1399,7 +1426,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
          puts("");
        */
 
-      geometry_msgs::PoseWithCovarianceStamped p;
+   /*   geometry_msgs::PoseWithCovarianceStamped p;
       // Fill in the header
       p.header.frame_id = global_frame_id_;
       p.header.stamp = laser_scan->header.stamp;
@@ -1435,7 +1462,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
          }
        */
 
-      pose_pub_.publish(p);
+    /*  pose_pub_.publish(p);
       last_published_pose = p;
 
       ROS_DEBUG("New pose: %6.3f %6.3f %6.3f",
@@ -1510,7 +1537,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     }
   }
 
-}
+}*/
 
 double
 AmclNode::getYaw(tf::Pose& t)
@@ -1655,11 +1682,11 @@ void AmclNode::LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pos
                     relative_corner.point.z=0;
 
                     if(i==1 or i==2){
-                            cout<<"entro1"<<endl;
+
                             relative_corner.point.x=-marker_width/2;
                         }
                     if(i==0 or i==1){
-                            cout<<"entro2"<<endl;
+
                             relative_corner.point.y=-marker_height/2;
                         }
                     geometry_msgs::PointStamped global_corner;
@@ -1683,8 +1710,7 @@ void AmclNode::LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pos
 
 }
 void AmclNode::loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras){
-     cout<<"entro"<<endl;
-     cout<<pose_cameras.size()<<endl;
+     //cout<<pose_cameras.size()<<endl;
     for (int i=0; i<pose_cameras.size();i++){
         tf::Vector3 Trasl (pose_cameras[i].position.x,pose_cameras[i].position.y,pose_cameras[i].position.z);
         geometry_msgs::TransformStamped inv_tf_cam_st,tf_cam_st;
@@ -1702,7 +1728,7 @@ void AmclNode::loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras){
 
     }
 
-
+    cout<<"cams in object"<<this->marker_->tf_cameras.size()<<endl;
 
 
 
@@ -1733,14 +1759,72 @@ void AmclNode::detectionCallback (const detector::messagedet msg){
         marker.MarkerPoints(corners);
         observation.push_back(marker);
     }
-    cout<<observation.size()<<endl;
-    if(!observation.empty()){
-
+    cout<<"detected"<<observation.size()<<endl;
+    if(!(observation.empty())){
+       // pf_init_model(pf_, (pf_init_model_fn_t)AmclNode::uniformPoseGenerator,
+                     // (void *) &marker_->map);
+    cout<<"actualization"<<endl;
     //Actualize filter with observation
+    cout<<"llega"<<endl;
     AMCLMarkerData mdata;
     mdata.sensor=this->marker_;
+    cout<<"sensor"<<endl;
     mdata.markers_obs=observation;
+    cout<<"observation"<<endl;
+    marker_->model_type=marker_model_type_;
+    marker_->UpdateSensor(pf_,(AMCLSensorData*) &mdata);
 
-    marker_->UpdateSensor(pf_,(AMCLMarkerData*) &mdata);
+    pf_sample_set_t* set = pf_->sets + pf_->current_set;
+    ROS_DEBUG("Num samples: %d\n", set->sample_count);
+
+    //Publish resulting particle cloud
+    geometry_msgs::PoseArray cloud_msg;
+          cloud_msg.header.stamp = ros::Time::now();
+          cloud_msg.header.frame_id = global_frame_id_;
+          cloud_msg.poses.resize(set->sample_count);
+          for(int i=0;i<set->sample_count;i++)
+          {
+            tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose.v[2]),
+                                     tf::Vector3(set->samples[i].pose.v[0],
+                                               set->samples[i].pose.v[1], 0)),
+                            cloud_msg.poses[i]);
+          }
+          particlecloud_pub_.publish(cloud_msg);
+        }
+
+   /* if(max_weight > 0.0)
+        {
+          ROS_DEBUG("Max weight pose: %.3f %.3f %.3f",
+                    hyps[max_weight_hyp].pf_pose_mean.v[0],
+                    hyps[max_weight_hyp].pf_pose_mean.v[1],
+                    hyps[max_weight_hyp].pf_pose_mean.v[2]);
+
+          geometry_msgs::PoseWithCovarianceStamped p;
+                // Fill in the header
+                p.header.frame_id = global_frame_id_;
+                p.header.stamp= ros::Time::now();
+                // Copy in the pose
+                p.pose.pose.position.x = hyps[max_weight_hyp].pf_pose_mean.v[0];
+                p.pose.pose.position.y = hyps[max_weight_hyp].pf_pose_mean.v[1];
+                tf::quaternionTFToMsg(tf::createQuaternionFromYaw(hyps[max_weight_hyp].pf_pose_mean.v[2]),
+                                      p.pose.pose.orientation);
+
+                // Copy in the covariance, converting from 3-D to 6-D
+                pf_sample_set_t* set = pf_->sets + pf_->current_set;
+                for(int i=0; i<2; i++)
+                      {
+                        for(int j=0; j<2; j++)
+                {
+                            p.pose.covariance[6*i+j] = set->cov.m[i][j];
+                                    }
+                            }
+                         p.pose.covariance[6*5+5] = set->cov.m[2][2];
+                         pose_pub_.publish(p);
+                               last_published_pose = p;
+
+
+
+
+}*/
 }
-}
+

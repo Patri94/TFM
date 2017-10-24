@@ -1,0 +1,47 @@
+<?xml version='1.0' ?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+<xacro:macro name="mycasterwheel" params="parent prefix pose_xyz pose_rpy" xmlns:xacro="http://www.ros.org/wiki/xacro">
+	
+	<joint name="${prefix}_joint" type="fixed">
+		<origin xyz="${pose_xyz}" rpy="${pose_rpy}"/>
+		<parent link="${parent}"/>
+		<child link="${prefix}_link"/>
+	</joint>
+	<link name="${prefix}_link">
+		<inertial>
+			<mass value = "0.5"/>
+			<origin xyz="0 0 0" rpy="0 0 0"/>
+			<inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+		</inertial>
+			
+
+	<collision>
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+		<geometry>
+			<sphere radius="0.05"/>
+		</geometry>
+		<gazebo>
+			<surface>
+			  <friction>
+			    <ode>
+			      <mu>0</mu>
+			      <mu2>0</mu2>
+			      <slip1>1.0</slip1>
+			      <slip2>1.0</slip2>
+			    </ode>
+			  </friction>
+			</surface>
+		</gazebo>
+	</collision>
+	<visual>
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+		<geometry>
+			<sphere radius="0.05"/>
+		</geometry>
+	</visual>
+	</link>
+	
+</xacro:macro>
+</robot>
+
+

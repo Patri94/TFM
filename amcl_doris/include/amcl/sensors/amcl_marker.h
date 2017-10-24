@@ -48,7 +48,7 @@ namespace amcl
 
 typedef enum
 {
-  MARKER_MODEL_LIKELIHOOD_FIELD
+  MARKER_MODEL_LIKELIHOOD
 } marker_model_t;
 
 // Laser sensor data
@@ -68,7 +68,7 @@ class AMCLMarkerData : public AMCLSensorData
 class AMCLMarker : public AMCLSensor
 {
   // Default constructor
-  public: AMCLMarker(std::vector<Marcador> map);
+  public: AMCLMarker();
 
   public: virtual ~AMCLMarker();
 
@@ -82,13 +82,13 @@ class AMCLMarker : public AMCLSensor
   public: virtual bool UpdateSensor(pf_t *pf, AMCLSensorData *data);
 
   // Determine the probability for the given pose
-  private: static double LikelihoodFieldModel(AMCLMarkerData *data,
+  private: static double ObservationLikelihood(AMCLMarkerData *data,
                                               pf_sample_set_t* set);
   private:std::vector<geometry_msgs::Point> CalculateRelativePose (Marcador Marca, geometry_msgs::Pose CamaraMundo);
   private: void LoadCameraInfo(void);
   private: std::vector<cv::Point2d> projectPoints(std::vector<geometry_msgs::Point> cam_center_coord);
   private:float calculateMeanError(std::vector<cv::Point2f> projection_detected, std::vector<cv::Point2d> projection_map);
-  private: marker_model_t model_type;
+  public: marker_model_t model_type;
 
   // Current data timestamp
   private: double time;
@@ -106,7 +106,7 @@ class AMCLMarker : public AMCLSensor
   private: int max_samples;
   private: int max_obs;
   public: std::vector<Marcador> temp_obs;
-  Mat image_filter;
+  public: Mat image_filter;
 
   // Marker model params
   //
