@@ -155,8 +155,8 @@ class AmclNode
                                     std_srvs::Empty::Response& res);
     bool nomotionUpdateCallback(std_srvs::Empty::Request& req,
                                     std_srvs::Empty::Response& res);
-   // bool setMapCallback(nav_msgs::SetMap::Request& req,
-                        //nav_msgs::SetMap::Response& res);
+    bool setMapCallback(nav_msgs::SetMap::Request& req,
+                        nav_msgs::SetMap::Response& res);
 
     void laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan);
     void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
@@ -226,7 +226,7 @@ class AmclNode
     // For slowing play-back when reading directly from a bag file
     ros::WallDuration bag_scan_period_;
 
-    //void requestMap();
+    void requestMap();
 
     // Helper to get odometric pose from transform system
     bool getOdomPose(tf::Stamped<tf::Pose>& pose,
@@ -285,12 +285,16 @@ class AmclNode
     visualization_msgs::Marker pub_map;
     tf::TransformBroadcaster br_marker;
     Mat imagen_filter;
+    std::vector<Marcador> marker_map;
+    std::vector<geometry_msgs::TransformStamped> tf_cameras;
     //Functions
     void LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros);
     void loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras);
     void imageCallback(const sensor_msgs::ImageConstPtr& msg);
     void detectionCallback (const detector::messagedet msg);
     std::vector<geometry_msgs::Point> CalculateRelativePose (Marcador Marca, geometry_msgs::Pose CamaraMundo);
+    //Prob related parameters
+    double marker_z_hit,marker_z_rand,marker_sigma_hit;
 
 
 
@@ -358,17 +362,14 @@ AmclNode::AmclNode() :
         first_reconfigure_call_(true)
 {
   boost::recursive_mutex::scoped_lock l(configuration_mutex_);
-  cout<<"1"<<endl;
   // Grab params off the param server
   private_nh_.param("use_map_topic", use_map_topic_, false);
   private_nh_.param("first_map_only", first_map_only_, false);
-cout<<"2"<<endl;
   double tmp;
   private_nh_.param("gui_publish_rate", tmp, -1.0);
   gui_publish_period = ros::Duration(1.0/tmp);
   private_nh_.param("save_pose_rate", tmp, 0.5);
   save_pose_period = ros::Duration(1.0/tmp);
-cout<<"3"<<endl;
   private_nh_.param("laser_min_range", laser_min_range_, -1.0);
   private_nh_.param("laser_max_range", laser_max_range_, -1.0);
   private_nh_.param("laser_max_beams", max_beams_, 30);
@@ -450,68 +451,64 @@ cout<<"8"<<endl;
     private_nh_.param("bag_scan_period", bag_scan_period, -1.0);
     bag_scan_period_.fromSec(bag_scan_period);
   }
-cout<<"9"<<endl;
   updatePoseFromServer();
-cout<<"10"<<endl;
+//cout<<"10"<<endl;
   cloud_pub_interval.fromSec(1.0);
   tfb_ = new tf::TransformBroadcaster();
   tf_ = new TransformListenerWrapper();
 
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
   particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
-  //global_loc_srv_ = nh_.advertiseService("global_localization",
-                                        // &AmclNode::globalLocalizationCallback,
-                                         //this);
+  global_loc_srv_ = nh_.advertiseService("global_localization",
+                                        &AmclNode::globalLocalizationCallback,
+                                         this);
   nomotion_update_srv_= nh_.advertiseService("request_nomotion_update", &AmclNode::nomotionUpdateCallback, this);
 
-  //set_map_srv_= nh_.advertiseService("set_map", &AmclNode::setMapCallback, this);
+  set_map_srv_= nh_.advertiseService("set_map", &AmclNode::setMapCallback, this);
 
-  //laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
-  //laser_scan_filter_ =
-          /*new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_,
+  laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
+  laser_scan_filter_ =
+          new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_,
                                                         *tf_, 
                                                         odom_frame_id_, 
-                                                        100);*/
+                                                        100);
 
   //laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
                                                  //  this, _1));
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
 cout<<"11"<<endl;
-  /*if(use_map_topic_) {
+  if(use_map_topic_) {
     map_sub_ = nh_.subscribe("map", 1, &AmclNode::mapReceived, this);
     ROS_INFO("Subscribed to map topic.");
   } else {
-    //requestMap();
-  }*/
+    requestMap();
+  }
   m_force_update = false;
 
-  dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
- // dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
- // dsrv_->setCallback(cb);
+ /* dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
+  dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
+  dsrv_->setCallback(cb);*/
 
   // 15s timer to warn on lack of receipt of laser scans, #5209
   //laser_check_interval_ = ros::Duration(15.0);
   //check_laser_timer_ = nh_.createTimer(laser_check_interval_,
                                        //boost::bind(&AmclNode::checkLaserReceived, this, _1));
 
-  cout<<"llego a camara"<<endl;
+  //cout<<"llego a camara"<<endl;
   marker_= new AMCLMarker();
   //For Camera PF
   XmlRpc::XmlRpcValue marker_list,camera_list;
-  float image_width_;
-  private_nh_.getParam("/amcl_doris/IMAGE_WIDTH",image_width_);
-  marker_->image_width=image_width_;
-  cout<<"camparams1ok"<<endl;
-
+  //float image_width_;
+  private_nh_.getParam("/amcl_doris/IMAGE_WIDTH",image_width);
+ // marker_->image_width=image_width_;
   private_nh_.getParam("/amcl_doris/MARKER_HEIGHT",marker_height);
-
-
   private_nh_.getParam("/amcl_doris/MARKER_WIDTH",marker_width);
-
-  private_nh_.getParam("/amcl_doris/NUM_CAM",marker_->num_cam);
+  private_nh_.getParam("/amcl_doris/NUM_CAM",num_cam);
   private_nh_.getParam("/amcl_doris/marker_positions",marker_list);
   private_nh_.getParam("/amcl_doris/camera_positions",camera_list);
-cout<<"camparamsOK"<<endl;
+  private_nh_.getParam("/amcl_doris/marker_z_hit",marker_z_hit);
+  private_nh_.getParam("/amcl_doris/marker_z_rand",marker_z_rand);
+  private_nh_.getParam("/amcl_doris/marker_sigma_hit",marker_sigma_hit);
   //Reading mapfile
   std::vector<geometry_msgs::Pose> Centros;
   std::vector<int> IDs;
@@ -558,19 +555,26 @@ cout<<"camparamsOK"<<endl;
 
 }
 
-  cout<<"cam"<<cameras.size()<<endl;
+  //cout<<"cam"<<cameras.size()<<endl;
+  this->loadTFCameras(cameras);
+  this->LoadMapMarkers(IDs,Centros);
+  dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
+  dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
+  dsrv_->setCallback(cb);
 
-  this->publicar= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose",1);
+  //this->publicar= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose",1);
   //this->publicar_cam1= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam1",1);
   //this->publicar_cam2= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam2",1);
   //this->publicar_cam3= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam3",1);
  //this->publicar_mapa= private_nh_.advertise<visualization_msgs::Marker> ("mapa",1);
   this->detector_subs= private_nh_.subscribe<sensor_msgs::Image> ("/DetectorNode/detector_output",1,&AmclNode::imageCallback,this);
   this->corners_subs=private_nh_.subscribe<detector::messagedet>("/DetectorNode/detection",1,&AmclNode::detectionCallback,this);
-  this->loadTFCameras(cameras);
-  this->LoadMapMarkers(IDs,Centros);
 
-  cout<<"constructorOK"<<endl;
+
+
+  //Configuration
+
+  //cout<<"constructorOK"<<endl;
 }
 
 void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
@@ -713,6 +717,19 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
                                                         100);*/
  // laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
                                                   // this, _1));
+
+  //Markers
+  delete marker_;
+  marker_=new AMCLMarker();
+  ROS_ASSERT(marker_);
+  if (marker_model_type_==MARKER_MODEL_LIKELIHOOD){
+      ROS_INFO("Initializing marker filter...");
+      marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit);
+      cout<<marker_map.size()<<endl;
+      marker_->map=marker_map;
+      cout<<tf_cameras.size()<<endl;
+      marker_->tf_cameras=tf_cameras;
+  }
 
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
 }
@@ -881,7 +898,7 @@ AmclNode::checkLaserReceived(const ros::TimerEvent& event)
   }
 }*/
 
-/*void
+void
 AmclNode::requestMap()
 {
   boost::recursive_mutex::scoped_lock ml(configuration_mutex_);
@@ -897,9 +914,9 @@ AmclNode::requestMap()
     d.sleep();
   }
   handleMapMessage( resp.map );
-}*/
+}
 
-/*void
+void
 AmclNode::mapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   if( first_map_only_ && first_map_received_ ) {
@@ -909,8 +926,8 @@ AmclNode::mapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
   handleMapMessage( *msg );
 
   first_map_received_ = true;
-}*/
-/*void
+}
+void
 AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
 {
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
@@ -991,13 +1008,21 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
                                     laser_likelihood_max_dist_);
     ROS_INFO("Done initializing likelihood field model.");
   }
-
+  //Markers
+  delete marker_;
+  marker_=new AMCLMarker();
+  ROS_ASSERT(marker_);
+  if (marker_model_type_==MARKER_MODEL_LIKELIHOOD){
+      marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit);
+      marker_->map=marker_map;
+      marker_->tf_cameras=tf_cameras;
+  }
   // In case the initial pose message arrived before the first map,
   // try to apply the initial pose now that the map has arrived.
   applyInitialPose();
 
 }
-*/
+
 void
 AmclNode::freeMapDependentMemory()
 {
@@ -1019,7 +1044,7 @@ AmclNode::freeMapDependentMemory()
  * Convert an OccupancyGrid map message into the internal
  * representation.  This allocates a map_t and returns it.
  */
-/*map_t*
+map_t*
 AmclNode::convertMap( const nav_msgs::OccupancyGrid& map_msg )
 {
   map_t* map = map_alloc();
@@ -1044,7 +1069,7 @@ AmclNode::convertMap( const nav_msgs::OccupancyGrid& map_msg )
   }
 
   return map;
-}*/
+}
 
 AmclNode::~AmclNode()
 {
@@ -1147,7 +1172,7 @@ AmclNode::nomotionUpdateCallback(std_srvs::Empty::Request& req,
 	return true;
 }
 
-/*bool
+bool
 AmclNode::setMapCallback(nav_msgs::SetMap::Request& req,
                          nav_msgs::SetMap::Response& res)
 {
@@ -1155,7 +1180,7 @@ AmclNode::setMapCallback(nav_msgs::SetMap::Request& req,
   handleInitialPoseMessage(req.initial_pose);
   res.success = true;
   return true;
-}*/
+}
 
 /*void
 AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
@@ -1673,8 +1698,6 @@ void AmclNode::LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pos
             tf_marker.transform.translation.y=marker_pose.position.y;
             tf_marker.transform.translation.z=marker_pose.position.z;
             tf_marker.transform.rotation=marker_pose.orientation;
-
-            //0=topleftcorner
             for (int i=0;i<4;i++){
                     geometry_msgs::PointStamped relative_corner;
                     relative_corner.point.x=marker_width/2;
@@ -1692,10 +1715,12 @@ void AmclNode::LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pos
                     geometry_msgs::PointStamped global_corner;
                     tf2::doTransform(relative_corner,global_corner,tf_marker);
                     Marker.setCorner(global_corner.point);
+
                     pub_map.points.push_back(global_corner.point);
                 }
+            //cout<<IDs[i]<<endl;
             Marker.setMarkerId(IDs[i]);
-            this->marker_->map.push_back(Marker);
+            this->marker_map.push_back(Marker);
 
 
 
@@ -1723,12 +1748,14 @@ void AmclNode::loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras){
         transformTFToMsg(inv_tfcam,inv_tf_cam_st.transform);
         inv_tf_cam_st.header.frame_id="camera_link";
         inv_tf_cam_st.child_frame_id="Cam"+to_string(i);
-        this->marker_->tf_cameras.push_back(inv_tf_cam_st);
+        this->tf_cameras.push_back(inv_tf_cam_st);
+        //this->marker_->tf_cameras.push_back(inv_tf_cam_st);
         this->br_marker.sendTransform(inv_tf_cam_st);
 
     }
 
-    cout<<"cams in object"<<this->marker_->tf_cameras.size()<<endl;
+
+    //cout<<"cams in object"<<this->marker_->tf_cameras.size()<<endl;
 
 
 
@@ -1763,16 +1790,28 @@ void AmclNode::detectionCallback (const detector::messagedet msg){
     if(!(observation.empty())){
        // pf_init_model(pf_, (pf_init_model_fn_t)AmclNode::uniformPoseGenerator,
                      // (void *) &marker_->map);
-    cout<<"actualization"<<endl;
+    //cout<<"actualization"<<endl;
     //Actualize filter with observation
-    cout<<"llega"<<endl;
     AMCLMarkerData mdata;
+   /* if (marker_model_type_==MARKER_MODEL_LIKELIHOOD){
+        ROS_INFO("Initializing marker filter in callback...");
+        marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit);
+        cout<<marker_map.size()<<endl;
+        marker_->map=marker_map;
+        cout<<tf_cameras.size()<<endl;
+        marker_->tf_cameras=tf_cameras;
+    }*/
+
     mdata.sensor=this->marker_;
-    cout<<"sensor"<<endl;
+    //cout<<"sensor"<<endl;
     mdata.markers_obs=observation;
-    cout<<"observation"<<endl;
+    //cout<<"observation"<<endl;
     marker_->model_type=marker_model_type_;
     marker_->UpdateSensor(pf_,(AMCLSensorData*) &mdata);
+    cout<<"numcam"<<num_cam<<endl;
+    cout<<"image_width"<<image_width<<endl;
+    marker_->image_width=image_width;
+    marker_->num_cam=num_cam;
 
     pf_sample_set_t* set = pf_->sets + pf_->current_set;
     ROS_DEBUG("Num samples: %d\n", set->sample_count);
@@ -1791,6 +1830,59 @@ void AmclNode::detectionCallback (const detector::messagedet msg){
           }
           particlecloud_pub_.publish(cloud_msg);
         }
+    //read hypotheses
+    double max_weight=0.0;
+    double max_weight_hyp=-1;
+    std::vector<amcl_hyp_t> marker_hyps;
+    marker_hyps.resize(pf_->sets[pf_->current_set].cluster_count);
+    for(int hyp_count = 0;hyp_count < pf_->sets[pf_->current_set].cluster_count; hyp_count++)
+    {
+        double weight;
+        pf_vector_t pose_mean;
+        pf_matrix_t pose_cov;
+
+        if (!pf_get_cluster_stats(pf_, hyp_count, &weight, &pose_mean, &pose_cov))
+              {
+                ROS_ERROR("Couldn't get stats on cluster %d", hyp_count);
+                break;
+        }
+        marker_hyps[hyp_count].weight = weight;
+        marker_hyps[hyp_count].pf_pose_mean = pose_mean;
+        marker_hyps[hyp_count].pf_pose_cov = pose_cov;
+
+        if(marker_hyps[hyp_count].weight > max_weight)
+              {
+                max_weight = marker_hyps[hyp_count].weight;
+                max_weight_hyp = hyp_count;
+        }
+        }
+        if(max_weight > 0.0)
+            {
+              ROS_DEBUG("Max weight pose: %.3f %.3f %.3f",
+                        marker_hyps[max_weight_hyp].pf_pose_mean.v[0],
+                        marker_hyps[max_weight_hyp].pf_pose_mean.v[1],
+                        marker_hyps[max_weight_hyp].pf_pose_mean.v[2]);
+
+              //Message for pose
+              geometry_msgs::PoseWithCovarianceStamped p;
+              // Fill in the header
+              p.header.frame_id = global_frame_id_;
+              p.header.stamp = ros::Time::now();
+              // Copy in the pose with the maximum weigh
+              p.pose.pose.position.x = marker_hyps[max_weight_hyp].pf_pose_mean.v[0];
+              p.pose.pose.position.y = marker_hyps[max_weight_hyp].pf_pose_mean.v[1];
+              tf::quaternionTFToMsg(tf::createQuaternionFromYaw(marker_hyps[max_weight_hyp].pf_pose_mean.v[2]),
+                                          p.pose.pose.orientation);
+                    // Copy in the covariance, converting from 3-D to 6-D
+              pf_sample_set_t* set = pf_->sets + pf_->current_set;
+              for(int i=0; i<2; i++){
+                      for(int j=0; j<2; j++){
+                          p.pose.covariance[6*i+j] = set->cov.m[i][j];
+                                  }
+                          }
+              p.pose.covariance[6*5+5] = set->cov.m[2][2];
+              pose_pub_.publish(p);
+                      }
 
    /* if(max_weight > 0.0)
         {

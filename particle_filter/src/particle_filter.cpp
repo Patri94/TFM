@@ -110,6 +110,7 @@ using namespace cv;
         this->publicar_cam3=nh1_.advertise<visualization_msgs::Marker> ("marker_pose_cam3",1);
         this->publicar_mapa=nh1_.advertise<visualization_msgs::Marker> ("mapa",1);
         detector_subs=nh1_.subscribe<sensor_msgs::Image> ("DetectorNode/detector_output",1,&ParticleFilter::imageCallback,this);
+        odom_subs=nh1_.subscribe<nav_msgs::Odometry> ("Doris/odom",1,&ParticleFilter::odomCallback,this);
 
         this->loadTFCameras(cameras);
         this->LoadMap(IDs,Centros);
@@ -123,6 +124,11 @@ using namespace cv;
     ParticleFilter::~ParticleFilter(){
 
     }
+    void ParticleFilter::odomCallback(const nav_msgs::Odometry::ConstPtr& msg){
+        this->EstimatedPose=msg->pose.pose;
+
+    }
+
     void ParticleFilter::imageCallback(const sensor_msgs::ImageConstPtr& msg){
         imagen_filter = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
         cout<<"Callback"<<endl;
@@ -132,7 +138,7 @@ using namespace cv;
     }
     void ParticleFilter::LoadCameraInfo(void){
         sensor_msgs::CameraInfo cam_inf_ed;
-        cam_inf_ed.header.frame_id="Cam1";
+        cam_inf_ed.header.frame_id="Doris/cam1";
         cam_inf_ed.height=679;
         cam_inf_ed.width=604;
         cam_inf_ed.distortion_model="plumb_bob";
@@ -339,6 +345,7 @@ std::vector<geometry_msgs::Point> ParticleFilter::ObservationModel (Marcador Mar
 }
 
 void ParticleFilter::ErrorCalc(){
+     //base_link attached to cuerpo (z=0.05)
      cv::Mat copia = imagen_filter;
     if(!(imagen_filter.empty())){
             for (int j=0;j<this->map.size();j++){
@@ -346,6 +353,7 @@ void ParticleFilter::ErrorCalc(){
     Supuesta.position.x=0;
     Supuesta.position.y=0;
     Supuesta.position.z=0;
+    EstimatedPose.position.z=0.0;
     tf::Quaternion Quat;
     tf::Matrix3x3 Mat;
     geometry_msgs::Quaternion QuatMs;
@@ -354,7 +362,7 @@ void ParticleFilter::ErrorCalc(){
     tf::quaternionTFToMsg (Quat,QuatMs);
     Supuesta.orientation=QuatMs;
     std::vector<cv::Point2d> proyeccion;
-    std::vector<geometry_msgs::Point> Relative=this->ObservationModel(this->map[j],Supuesta);
+    std::vector<geometry_msgs::Point> Relative=this->ObservationModel(this->map[j],EstimatedPose);
     //cout<<"AfterObsModel"<<endl;
     this->map[j].setRelativePose(Relative);
     visualization_msgs::Marker CornersRelativePose;

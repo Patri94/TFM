@@ -36,11 +36,12 @@ using namespace tf;
         geometry_msgs::Pose EstimatedPose,Cam1,Cam2,Cam3;
         std::vector<geometry_msgs::TransformStamped> tf_cameras;
         ros::Publisher publicar,publicar_cam1,publicar_cam2,publicar_cam3,publicar_mapa;
-        ros::Subscriber detector_subs;
+        ros::Subscriber detector_subs, odom_subs;
         float  marker_width, num_cam,marker_height,image_width;
         TransformBroadcaster br;
         std::vector<Marcador> map;
         visualization_msgs::Marker pub_map;
+        //nav_msgs::odometry odom_msg;
 
         sensor_msgs::CameraInfo cam_inf_ed;
 
@@ -57,6 +58,7 @@ using namespace tf;
         void ErrorCalc();
         std::vector<cv::Point2d> Proyectar(visualization_msgs::Marker CamCoord1,float width, float cam);
         void imageCallback(const sensor_msgs::ImageConstPtr& msg);
+        void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
 };
 
