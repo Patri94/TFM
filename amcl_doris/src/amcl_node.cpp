@@ -278,6 +278,7 @@ class AmclNode
     void checkLaserReceived(const ros::TimerEvent& event);
 
     //For Camera PF
+    bool marker_update;
     geometry_msgs::Pose EstimatedPose,Cam1,Cam2,Cam3;
     ros::Publisher publicar,publicar_cam1,publicar_cam2,publicar_cam3,publicar_mapa;
     ros::Subscriber detector_subs, corners_subs;
@@ -382,12 +383,12 @@ AmclNode::AmclNode() :
   private_nh_.param("odom_alpha3", alpha3_, 0.2);
   private_nh_.param("odom_alpha4", alpha4_, 0.2);
   private_nh_.param("odom_alpha5", alpha5_, 0.2);
-cout<<"4"<<endl;
+//cout<<"4"<<endl;
   private_nh_.param("do_beamskip", do_beamskip_, false);
   private_nh_.param("beam_skip_distance", beam_skip_distance_, 0.5);
   private_nh_.param("beam_skip_threshold", beam_skip_threshold_, 0.3);
   private_nh_.param("beam_skip_error_threshold_", beam_skip_error_threshold_, 0.9);
-cout<<"5"<<endl;
+//cout<<"5"<<endl;
   private_nh_.param("laser_z_hit", z_hit_, 0.95);
   private_nh_.param("laser_z_short", z_short_, 0.1);
   private_nh_.param("laser_z_max", z_max_, 0.05);
@@ -415,7 +416,7 @@ cout<<"5"<<endl;
   if (tmp_marker_model_type=="observation_likelihood"){
       marker_model_type_=MARKER_MODEL_LIKELIHOOD;
   }
-cout<<"6"<<endl;
+//cout<<"6"<<endl;
   private_nh_.param("odom_model_type", tmp_model_type, std::string("diff"));
   if(tmp_model_type == "diff")
     odom_model_type_ = ODOM_MODEL_DIFF;
@@ -431,7 +432,7 @@ cout<<"6"<<endl;
              tmp_model_type.c_str());
     odom_model_type_ = ODOM_MODEL_DIFF;
   }
-cout<<"8"<<endl;
+//cout<<"8"<<endl;
   private_nh_.param("update_min_d", d_thresh_, 0.2);
   private_nh_.param("update_min_a", a_thresh_, M_PI/6.0);
   private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
@@ -476,7 +477,7 @@ cout<<"8"<<endl;
   //laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
                                                  //  this, _1));
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
-cout<<"11"<<endl;
+//cout<<"11"<<endl;
   if(use_map_topic_) {
     map_sub_ = nh_.subscribe("map", 1, &AmclNode::mapReceived, this);
     ROS_INFO("Subscribed to map topic.");
@@ -532,7 +533,7 @@ cout<<"11"<<endl;
           IDs.push_back(marker_list[i]["ID"]);
 
       }
-  cout<<"centros"<<Centros.size()<<endl;
+  //cout<<"centros"<<Centros.size()<<endl;
   //Reading camerafile
   std::vector<geometry_msgs::Pose> cameras;
   for(int i=0;i<camera_list.size();i++){
@@ -725,10 +726,12 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   if (marker_model_type_==MARKER_MODEL_LIKELIHOOD){
       ROS_INFO("Initializing marker filter...");
       marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit);
-      cout<<marker_map.size()<<endl;
+      //cout<<marker_map.size()<<endl;
       marker_->map=marker_map;
-      cout<<tf_cameras.size()<<endl;
+      //cout<<tf_cameras.size()<<endl;
       marker_->tf_cameras=tf_cameras;
+      marker_->num_cam=num_cam;
+      marker_->image_width=image_width;
   }
 
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
@@ -1016,6 +1019,8 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
       marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit);
       marker_->map=marker_map;
       marker_->tf_cameras=tf_cameras;
+      marker_->num_cam=num_cam;
+      marker_->image_width=image_width;
   }
   // In case the initial pose message arrived before the first map,
   // try to apply the initial pose now that the map has arrived.
@@ -1090,6 +1095,7 @@ AmclNode::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
   // Get the robot's pose
   tf::Stamped<tf::Pose> ident (tf::Transform(tf::createIdentityQuaternion(),
                                            tf::Vector3(0,0,0)), t, f);
+  //cout<<"odom frame id"<<odom_frame_id_<<endl;
   try
   {
     this->tf_->transformPose(odom_frame_id_, ident, odom_pose);
@@ -1101,8 +1107,11 @@ AmclNode::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
   }
   x = odom_pose.getOrigin().x();
   y = odom_pose.getOrigin().y();
+  //cout<<"odom x"<<x<<endl;
+  //cout<<"odom y"<<y<<endl;
   double pitch,roll;
   odom_pose.getBasis().getEulerYPR(yaw, pitch, roll);
+  //cout<<yaw<<pitch<<roll<<endl;
 
   return true;
 }
@@ -1763,8 +1772,8 @@ void AmclNode::loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras){
 
 void AmclNode::imageCallback(const sensor_msgs::ImageConstPtr& msg){
     this->marker_->image_filter = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
-    cout<<"Callback"<<endl;
-    imshow("Callback",this->marker_->image_filter);
+    //cout<<"Callback"<<endl;
+    //imshow("Callback",this->marker_->image_filter);
     waitKey(30);
 
 }
@@ -1786,38 +1795,101 @@ void AmclNode::detectionCallback (const detector::messagedet msg){
         marker.MarkerPoints(corners);
         observation.push_back(marker);
     }
-    cout<<"detected"<<observation.size()<<endl;
+    //cout<<"detected"<<observation.size()<<endl;
+    tf_broadcast_=true;
+    //cout<<"tf_broadcast"<<tf_broadcast_<<endl;
+    //cout<<"base_frame_id"<<base_frame_id_<<endl;
+    //cout<<"odom frame"<<odom_frame_id_<<endl;
     if(!(observation.empty())){
-       // pf_init_model(pf_, (pf_init_model_fn_t)AmclNode::uniformPoseGenerator,
-                     // (void *) &marker_->map);
-    //cout<<"actualization"<<endl;
-    //Actualize filter with observation
-    AMCLMarkerData mdata;
-   /* if (marker_model_type_==MARKER_MODEL_LIKELIHOOD){
-        ROS_INFO("Initializing marker filter in callback...");
-        marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit);
-        cout<<marker_map.size()<<endl;
-        marker_->map=marker_map;
-        cout<<tf_cameras.size()<<endl;
-        marker_->tf_cameras=tf_cameras;
-    }*/
 
-    mdata.sensor=this->marker_;
-    //cout<<"sensor"<<endl;
-    mdata.markers_obs=observation;
-    //cout<<"observation"<<endl;
-    marker_->model_type=marker_model_type_;
-    marker_->UpdateSensor(pf_,(AMCLSensorData*) &mdata);
-    cout<<"numcam"<<num_cam<<endl;
-    cout<<"image_width"<<image_width<<endl;
-    marker_->image_width=image_width;
-    marker_->num_cam=num_cam;
+    //Pose of robot when info was taken
+        pf_vector_t pose;
+        pf_vector_t delta = pf_vector_zero();
 
-    pf_sample_set_t* set = pf_->sets + pf_->current_set;
-    ROS_DEBUG("Num samples: %d\n", set->sample_count);
+        bool force_publication = false;
+       // cout<<"odom"<<getOdomPose(latest_odom_pose_, pose.v[0], pose.v[1], pose.v[2],
+                //msg.header.stamp, base_frame_id_)<<endl;
+        if(!(getOdomPose(latest_odom_pose_, pose.v[0], pose.v[1], pose.v[2],
+                          msg.header.stamp, base_frame_id_)))
+          {
+            ROS_ERROR("Couldn't determine robot's pose associated with camera info");
+            return;
+          }
+
+        if(pf_init_)
+          {
+            // Compute change in pose
+            //delta = pf_vector_coord_sub(pose, pf_odom_pose_);
+            delta.v[0] = pose.v[0] - pf_odom_pose_.v[0];
+            delta.v[1] = pose.v[1] - pf_odom_pose_.v[1];
+            delta.v[2] = angle_diff(pose.v[2], pf_odom_pose_.v[2]);
+
+            // See if we should update the filter
+            bool update = fabs(delta.v[0]) > d_thresh_ ||
+                          fabs(delta.v[1]) > d_thresh_ ||
+                          fabs(delta.v[2]) > a_thresh_;
+            update = update || m_force_update;
+            m_force_update=false;
+
+            // Set the laser update flags
+            if(update)
+              marker_update=true;
+          }
+
+          if(!pf_init_)
+          {
+            // Pose at last filter update
+            pf_odom_pose_ = pose;
+
+            // Filter is now initialized
+            pf_init_ = true;
+
+            // Should update sensor data
+            for(unsigned int i=0; i < marker_update; i++)
+              marker_update = true;
+
+            force_publication = true;
+
+            resample_count_ = 0;
+        }
+        //If the robot has moved update the filter
+          else if(pf_init_ && marker_update)
+          {
+              cout<<"actualizando odometria"<<endl;
+              AMCLOdomData odata;
+              odata.pose = pose;
+              odata.delta = delta;
+              // Use the action data to update the filter
+              odom_->UpdateAction(pf_, (AMCLSensorData*)&odata);
+          }
+          bool resampled = false;
+          if(marker_update){
+
+            cout<<"actualizar markers"<<endl;
+            AMCLMarkerData mdata;
+            mdata.sensor=this->marker_;
+            mdata.markers_obs=observation;
+            marker_->model_type=marker_model_type_;
+            marker_->image_width=image_width;
+            marker_->num_cam=num_cam;
+            //cout<<global_frame_id_<<endl;
+            //cout<<odom_frame_id_<<endl;
+            //Update filter with marker data
+            marker_->UpdateSensor(pf_,(AMCLSensorData*) &mdata);
+            //cout<<"numcam"<<num_cam<<endl;
+            //cout<<"image_width"<<image_width<<endl;
+            if(!(++resample_count_ % resample_interval_))
+                {
+                  pf_update_resample(pf_);
+                  resampled = true;
+            }
+
+            pf_sample_set_t* set = pf_->sets + pf_->current_set;
+            ROS_DEBUG("Num samples: %d\n", set->sample_count);
 
     //Publish resulting particle cloud
-    geometry_msgs::PoseArray cloud_msg;
+          if(!m_force_update){
+          geometry_msgs::PoseArray cloud_msg;
           cloud_msg.header.stamp = ros::Time::now();
           cloud_msg.header.frame_id = global_frame_id_;
           cloud_msg.poses.resize(set->sample_count);
@@ -1828,8 +1900,15 @@ void AmclNode::detectionCallback (const detector::messagedet msg){
                                                set->samples[i].pose.v[1], 0)),
                             cloud_msg.poses[i]);
           }
+          //cout<<"Publicacion de la nube de particulas"<<endl;
           particlecloud_pub_.publish(cloud_msg);
         }
+          }
+          if (resampled|| force_publication){
+              if(!resampled){
+                  // re-compute the cluster statistics
+                 pf_cluster_stats(pf_, pf_->sets);
+              }
     //read hypotheses
     double max_weight=0.0;
     double max_weight_hyp=-1;
@@ -1881,42 +1960,89 @@ void AmclNode::detectionCallback (const detector::messagedet msg){
                                   }
                           }
               p.pose.covariance[6*5+5] = set->cov.m[2][2];
+
+              //cout<<"publicacion de la pose"<<endl;
               pose_pub_.publish(p);
-                      }
 
-   /* if(max_weight > 0.0)
-        {
-          ROS_DEBUG("Max weight pose: %.3f %.3f %.3f",
-                    hyps[max_weight_hyp].pf_pose_mean.v[0],
-                    hyps[max_weight_hyp].pf_pose_mean.v[1],
-                    hyps[max_weight_hyp].pf_pose_mean.v[2]);
+              last_published_pose = p;
 
-          geometry_msgs::PoseWithCovarianceStamped p;
-                // Fill in the header
-                p.header.frame_id = global_frame_id_;
-                p.header.stamp= ros::Time::now();
-                // Copy in the pose
-                p.pose.pose.position.x = hyps[max_weight_hyp].pf_pose_mean.v[0];
-                p.pose.pose.position.y = hyps[max_weight_hyp].pf_pose_mean.v[1];
-                tf::quaternionTFToMsg(tf::createQuaternionFromYaw(hyps[max_weight_hyp].pf_pose_mean.v[2]),
-                                      p.pose.pose.orientation);
+             // ROS_DEBUG("New pose: %6.3f %6.3f %6.3f",
+              cout<<"new pose"<<endl;
+                             cout<<marker_hyps[max_weight_hyp].pf_pose_mean.v[0]<<endl;
+                             cout<<marker_hyps[max_weight_hyp].pf_pose_mean.v[1]<<endl;
+                             cout<<marker_hyps[max_weight_hyp].pf_pose_mean.v[2];
 
-                // Copy in the covariance, converting from 3-D to 6-D
-                pf_sample_set_t* set = pf_->sets + pf_->current_set;
-                for(int i=0; i<2; i++)
-                      {
-                        for(int j=0; j<2; j++)
-                {
-                            p.pose.covariance[6*i+j] = set->cov.m[i][j];
-                                    }
-                            }
-                         p.pose.covariance[6*5+5] = set->cov.m[2][2];
-                         pose_pub_.publish(p);
-                               last_published_pose = p;
+              //tf from map to odom frame
+              tf::Stamped<tf::Pose> odom_to_map;
+              try
+                    {
+                      tf::Transform tmp_tf(tf::createQuaternionFromYaw(marker_hyps[max_weight_hyp].pf_pose_mean.v[2]),
+                                           tf::Vector3(marker_hyps[max_weight_hyp].pf_pose_mean.v[0],
+                                                       marker_hyps[max_weight_hyp].pf_pose_mean.v[1],
+                                                       0.0));
+                      //cout<<base_frame_id_<<endl;
+                      tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(),
+                                                            msg.header.stamp,
+                                                            base_frame_id_);
+                      //cout<<odom_frame_id_<<endl;
+                      this->tf_->transformPose(odom_frame_id_,
+                                               tmp_tf_stamped,
+                                               odom_to_map);
+                      //cout<<"publica tf base_link->odom"<<endl;
+              } catch(tf::TransformException)
+              {
+                cout<<"Failed to subtract base to odom transform"<<endl;
+                return;
+             }
+              latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),
+                                              tf::Point(odom_to_map.getOrigin()));
+                   latest_tf_valid_ = true;
+              //cout<<"tf_broadcast2"<<tf_broadcast_<<endl;
+                   if (tf_broadcast_ == true)
+                         {
+                           // We want to send a transform that is good up until a
+                           // tolerance time so that odom can be used
+                           ros::Time transform_expiration = (msg.header.stamp +
+                                                             transform_tolerance_);
+                           //cout<<"entro en publicar tf"<<endl;
+                           tf::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
+                                                               msg.header.stamp,
+                                                               global_frame_id_, odom_frame_id_);
+                           //cout<<"Publicar tf odom ->map"<<endl;
+                           this->tfb_->sendTransform(tmp_tf_stamped);
+                           sent_first_transform_ = true;
+                         }
+                   }
+        else
+            {
+              ROS_ERROR("No pose!");
+            }
+        }
+    else if(latest_tf_valid_)
+  {
+    if (tf_broadcast_ == true)
+    {
+      // Nothing changed, so we'll just republish the last transform, to keep
+      // everybody happy.
+      ros::Time transform_expiration = (msg.header.stamp +
+                                        transform_tolerance_);
+      tf::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
+                                          transform_expiration,
+                                          global_frame_id_, odom_frame_id_);
+      this->tfb_->sendTransform(tmp_tf_stamped);
+    }
 
+    // Is it time to save our last pose to the param server
+    ros::Time now = ros::Time::now();
+    if((save_pose_period.toSec() > 0.0) &&
+       (now - save_pose_last_time) >= save_pose_period)
+    {
+      this->savePoseToServer();
+      save_pose_last_time = now;
+    }
+  }
 
+}
 
-
-}*/
 }
 

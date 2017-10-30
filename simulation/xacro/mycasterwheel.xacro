@@ -11,37 +11,32 @@
 		<inertial>
 			<mass value = "0.5"/>
 			<origin xyz="0 0 0" rpy="0 0 0"/>
-			<inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+			 <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
 		</inertial>
 			
 
-	<collision>
-		<origin xyz="0 0 0" rpy="0 0 0"/>
-		<geometry>
-			<sphere radius="0.05"/>
-		</geometry>
-		<gazebo>
-			<surface>
-			  <friction>
-			    <ode>
-			      <mu>0</mu>
-			      <mu2>0</mu2>
-			      <slip1>1.0</slip1>
-			      <slip2>1.0</slip2>
-			    </ode>
-			  </friction>
-			</surface>
-		</gazebo>
-	</collision>
-	<visual>
-		<origin xyz="0 0 0" rpy="0 0 0"/>
-		<geometry>
-			<sphere radius="0.05"/>
-		</geometry>
-	</visual>
+		<collision>
+			<origin xyz="0 0 0" rpy="0 0 0"/>
+			<geometry>
+				<sphere radius="0.05"/>
+			</geometry>
+			 
+		</collision>
+		<visual>
+			<origin xyz="0 0 0" rpy="0 0 0"/>
+			<geometry>
+				<sphere radius="0.05"/>
+			</geometry>
+		</visual>
 	</link>
+	<gazebo reference ="${prefix}_link">
+		<mu1 value="0.0"/>
+    		<mu2 value="0.0"/>
+    		<kp value="10000000.0"/>
+    		<kd value="0.00001"/>
+	</gazebo>
+
 	
 </xacro:macro>
 </robot>
-
 

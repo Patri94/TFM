@@ -94,7 +94,7 @@ bool AMCLMarker::UpdateSensor(pf_t *pf, AMCLSensorData *data)
 
 double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* set)
 {
-  //cout<<"in particle filter"<<endl;
+  cout<<"in particle filter"<<endl;
   AMCLMarker *self;
   pf_sample_t *sample;
   pf_vector_t pose;

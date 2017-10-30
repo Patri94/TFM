@@ -32,7 +32,7 @@
   <param name="laser_likelihood_max_dist" value="2.0"/>
   <param name="update_min_d" value="0.2"/>
   <param name="update_min_a" value="0.5"/>
-  <param name="odom_frame_id" value="odom"/>
+  <param name="odom_frame_id" value="Doris/odom"/>
   <param name="resample_interval" value="1"/>
   <param name="transform_tolerance" value="0.1"/>
   <param name="recovery_alpha_slow" value="0.0"/>
@@ -46,7 +46,7 @@
 	<param name="MARKER_WIDTH" value = "0.3777" />
 	<param name="NUM_CAM" value ="3" />
 	<param name = "marker_model_type" value="observation_likelihood"/>
-	<param name = "odom_frame_id" value="Doris/odom" />
+	<!--<param name = "odom_frame_id" value="Doris/odom" />-->
 	<param name= "base_frame_id" value="Doris/cuerpo" />
 	<param name="use_map_topic" value="true"/>
 	<param name="marker_z_hit" value="0.5"/>

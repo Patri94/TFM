@@ -486,7 +486,8 @@ void cDetector::createMessage(void){
                 detected.ID.data=uint8_t(this->OptMarkers[i].getMarkerID());
                 msg_det.DetectedMarkers.push_back(detected);
       }
-        cout<<"detectados"<<msg_det.DetectedMarkers.size()<<endl;
+        //cout<<"detectados"<<msg_det.DetectedMarkers.size()<<endl;
+         msg_det.header.stamp=ros::Time::now();
          this->pub_comb.publish(this->comb_msg);
          this->publish_detection.publish(msg_det);
         }
