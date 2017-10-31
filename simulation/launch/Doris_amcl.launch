@@ -1,10 +1,10 @@
 <launch>
   <param name="use_sim_time" value="true" />
-  <node pkg="gmapping" type="slam_gmapping" name="gmapping_Doris" output="screen" >
+  <node pkg="amcl" type="amcl" name="amcl" output="screen" >
     <remap from="scan" to="Doris/scan" />
     <param name="odom_frame" value="Doris/odom"/>
-    <param name="base_frame" value="Doris/cuerpo"/>
+    <param name="base_link" value="Doris/cuerpo"/>
     <remap from="odom" to="Doris/odom" />
-    <remap from="base_link" to="Doris/cuerpo"/>
+    <remap from="base_link" to="Doris/cuerpo" />
   </node>
 </launch>

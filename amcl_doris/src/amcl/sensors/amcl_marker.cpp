@@ -94,18 +94,19 @@ bool AMCLMarker::UpdateSensor(pf_t *pf, AMCLSensorData *data)
 
 double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* set)
 {
-  //cout<<"in particle filter"<<endl;
+  cout<<"in particle filter"<<endl;
   AMCLMarker *self;
   pf_sample_t *sample;
   pf_vector_t pose;
   pf_vector_t hit;
   double total_weight;
-  double z, pz,p;
+  double pz,p;
+  std::vector<float> z;
   self = (AMCLMarker*) data->sensor;
   if (!self->image_filter.empty()){
   //self->z_hit=100;
   self->z_hit=1.0;
-  self->sigma_hit=50;
+  self->sigma_hit=20.0;
   total_weight = 0.0;
   int i;
   std::vector<Marcador> detected_from_map;
@@ -120,6 +121,10 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
 
         }
   }
+ /* for (int i=0;i<detected_from_map.size();i++){
+      cout<<detected_from_map[i].getMarkerID()<<endl;
+  }*/
+  //waitKey();
   //cout<<"camaras"<<self->num_cam<<endl;
   //cout<<"imagen"<<self->image_width<<endl;
   for (i=0;i< set->sample_count; i++){
@@ -129,14 +134,19 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
       p=1.0;
       //Initialize parameters
       double z_hit_denom = 2 * self->sigma_hit * self->sigma_hit;
-      //cout<<"after zhitdenom"<<endl;
+      cout<<"after zhitdenom"<<z_hit_denom<<endl;
       geometry_msgs::Pose sample_pose;
       tf::Quaternion quat;
       geometry_msgs::Quaternion quat_msg;
-      sample_pose.position.x=pose.v[1];
-      sample_pose.position.y=pose.v[2];
+      sample_pose.position.x=pose.v[0];
+      sample_pose.position.y=pose.v[1];
       sample_pose.position.z=0.0;
-      quat.setRPY(0,0,pose.v[3]);
+      cout<<"Pose particula"<<endl;
+      cout<<"x: "<<sample_pose.position.x<<endl;
+      cout<<"y: "<<sample_pose.position.y<<endl;
+      cout<<pose.v[2]<<endl;
+
+      quat.setRPY(0,0,pose.v[2]);
       tf::quaternionTFToMsg(quat,quat_msg);
       sample_pose.orientation=quat_msg;
       //cout<<"after building pose"<<endl;
@@ -146,11 +156,12 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           //cout<<"mapID"<<detected_from_map[j].getMarkerID()<<endl;
           //cout<<"detectedID"<<observation[j].getMarkerID()<<endl;
           //waitKey();
-          pz = 0.0;
+
           //Calculate projection of marker corners
           //cout<<"detectados"<<detected_from_map.size()<<endl;
+          cout<<"antes de relative pose"<<endl;
           std::vector<geometry_msgs::Point> relative_to_cam=self->CalculateRelativePose(detected_from_map[j],sample_pose);
-          //cout<<"after relative pose"<<endl;
+          cout<<"after relative pose"<<endl;
           std::vector<cv::Point2d> projection=self->projectPoints(relative_to_cam);
           //cout<<projection.size()<<endl;
           line (self->image_filter,projection[0], projection[1],Scalar(0,0,255),1);
@@ -173,15 +184,24 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
               cout<<"ymap:"<<projection[i].y<<endl;
           }*/
           //waitKey();
-          z=self->calculateMeanError(observation[j].getMarkerPoints(),projection);
+          //Compute probability for every corner
+          z=self->calculateError(observation[j].getMarkerPoints(),projection);
+          for (int i=0;i<4;i++){
+              pz=0.0;
+              pz+=gaussian_norm* exp(-(z[i]*z[i]) / z_hit_denom);
+              cout<<"pz: "<<pz<<endl;
+              p+=pz*pz*pz;
+          }
+
           //cout<<"despues de mean error"<<endl;
           //Gaussian model
           //cout<<"z_hit"<<self->z_hit<<endl;
          // cout<<"z_hit"<<self->z_hit<<endl;
           //cout<<"z_hit_denom"<<z_hit_denom<<endl;
-          pz+=gaussian_norm* exp(-(z*z) / z_hit_denom);
+
           //cout<<"pz:"<<pz<<endl;
           //cout<< "despues de Gaussian model"<<endl;
+
           if (pz>1.0){
               cout<<"mayor"<<endl;
           }
@@ -190,13 +210,13 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           //assert(pz >= 0.0);
 
           //Combination of prababilities
-          p += pz*pz*pz;
-          //cout<<"p:"<<p<<endl;
+
+          cout<<"p:"<<p<<endl;
 
       }
       sample->weight *= p;
       total_weight += sample->weight;
-      //cout<<"despues de asignar peso a particula"<<endl;
+      cout<<"despues de asignar peso a particula"<<endl;
 
 
   }
@@ -205,20 +225,24 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
   //cout<<"hesalido Marker"<<endl;
   }
 }
-float AMCLMarker::calculateMeanError(std::vector<cv::Point2f> projection_detected, std::vector<cv::Point2d> projection_map){
+std::vector<float> AMCLMarker::calculateError(std::vector<cv::Point2f> projection_detected, std::vector<cv::Point2d> projection_map){
     //cout<<"entro en mean error"<<endl;
-    float error=0;
+    //normalizing error with width and height of image.
+    float image_height=679;
+
+    std::vector<float> errorv;
     for (int i=0;i<4;i++){
         float errorx,errory;
-        errorx=abs(projection_map[i].x-projection_detected[i].x);
+        float error=0.0;
+        errorx=abs(projection_map[i].x-projection_detected[i].x)/image_width;
         //cout<<"errorx:"<<errorx<<endl;
-        errory=abs(projection_map[i].y-projection_detected[i].y);
+        errory=abs(projection_map[i].y-projection_detected[i].y)/image_height;
         //cout<<"errory:"<<errory<<endl;
         error+=sqrt((errorx*errorx)+(errory*errory));
-        //cout<<"error"<<error<<endl;
+        errorv.push_back(error);
     }
     //cout<<"error"<<error<<endl;
-    return error;
+    return errorv;
 
 }
 
@@ -238,8 +262,9 @@ std::vector<cv::Point2d> AMCLMarker::projectPoints(std::vector<geometry_msgs::Po
     offset.y=0;
     //cout<<"offset"<<offset.x;
     cv::Point3d Coord;
-    if (angulo>M_PI and angulo<5.2333){
+    if (angulo>M_PI and angulo<5*M_PI/6){
            //camera2
+            cout<<"entra2"<<endl;
             tf2::doTransform(cam_center_coord_st,cam_trans_coord_st,tf_cameras[1]);
             Coord.x=cam_trans_coord_st.point.x;
             Coord.y=cam_trans_coord_st.point.y;
@@ -249,7 +274,8 @@ std::vector<cv::Point2d> AMCLMarker::projectPoints(std::vector<geometry_msgs::Po
 
         }else{
             //CAM3
-            if(angulo>1.047 and angulo<M_PI){
+            if(angulo>M_PI/3 and angulo<M_PI){
+                cout<<"entra3"<<endl;
                 tf2::doTransform(cam_center_coord_st,cam_trans_coord_st,tf_cameras[2]);
                 Coord.x=cam_trans_coord_st.point.x;
                 Coord.y=cam_trans_coord_st.point.y;
@@ -257,6 +283,7 @@ std::vector<cv::Point2d> AMCLMarker::projectPoints(std::vector<geometry_msgs::Po
                 Pixel=this->pin_model.project3dToPixel(Coord);
                 Pixel=Pixel+offset;
                 }else{//CAM1
+                cout<<"entra1"<<endl;
                 tf2::doTransform(cam_center_coord_st,cam_trans_coord_st,tf_cameras[0]);
                 Coord.x=cam_trans_coord_st.point.x;
                 Coord.y=cam_trans_coord_st.point.y;
@@ -266,6 +293,7 @@ std::vector<cv::Point2d> AMCLMarker::projectPoints(std::vector<geometry_msgs::Po
         }
      Pixels.push_back(Pixel);
         }
+    cout<<"sale"<<endl;
 
     return Pixels;
 

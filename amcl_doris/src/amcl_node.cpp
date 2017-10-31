@@ -554,8 +554,16 @@ AmclNode::AmclNode() :
           temp_pose.orientation.w = double(Quat.w());
           cameras.push_back(temp_pose);
 
-}
 
+}
+  tf::Quaternion quat;
+  quat=tf::createQuaternionFromRPY(0,0,1.57);
+  cout<<"quaternion initial pose"<<endl;
+  cout<<quat.getX()<<endl;
+  cout<<quat.getY()<<endl;
+  cout<<quat.getZ()<<endl;
+  cout<<quat.getW()<<endl;
+  waitKey();
   //cout<<"cam"<<cameras.size()<<endl;
   this->loadTFCameras(cameras);
   this->LoadMapMarkers(IDs,Centros);
@@ -1584,6 +1592,8 @@ AmclNode::getYaw(tf::Pose& t)
 void
 AmclNode::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
 {
+  cout<<"he recibido initial pose"<<endl;
+  waitKey();
   handleInitialPoseMessage(*msg);
 }
 

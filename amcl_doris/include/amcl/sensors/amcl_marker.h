@@ -87,7 +87,7 @@ class AMCLMarker : public AMCLSensor
   private:std::vector<geometry_msgs::Point> CalculateRelativePose (Marcador Marca, geometry_msgs::Pose CamaraMundo);
   private: void LoadCameraInfo(void);
   private: std::vector<cv::Point2d> projectPoints(std::vector<geometry_msgs::Point> cam_center_coord);
-  private:float calculateMeanError(std::vector<cv::Point2f> projection_detected, std::vector<cv::Point2d> projection_map);
+  private:std::vector<float> calculateError(std::vector<cv::Point2f> projection_detected, std::vector<cv::Point2d> projection_map);
   public: marker_model_t model_type;
 
   // Current data timestamp

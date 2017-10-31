@@ -350,14 +350,14 @@ void ParticleFilter::ErrorCalc(){
     if(!(imagen_filter.empty())){
             for (int j=0;j<this->map.size();j++){
     geometry_msgs::Pose Supuesta;
-    Supuesta.position.x=0;
-    Supuesta.position.y=0;
+    Supuesta.position.x=1;
+    Supuesta.position.y=4;
     Supuesta.position.z=0;
     EstimatedPose.position.z=0.0;
     tf::Quaternion Quat;
     tf::Matrix3x3 Mat;
     geometry_msgs::Quaternion QuatMs;
-    Mat.setRPY(0,0,0);
+    Mat.setRPY(0,0,1.57);
     Mat.getRotation(Quat);
     tf::quaternionTFToMsg (Quat,QuatMs);
     Supuesta.orientation=QuatMs;
