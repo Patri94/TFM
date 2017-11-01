@@ -4,15 +4,15 @@
     <arg name="marker_positions_file" default="$(find amcl_doris)/maps/$(arg markers_file_name).yaml" />
     <arg name="cameras_file_name" default="cameras"/>
     <arg name="cameras_positions_file" default="$(find amcl_doris)/maps/$(arg cameras_file_name).yaml" />
-<node pkg="amcl_doris" type="amcl" name="amcl_doris" output="screen">
+<node pkg="amcl_doris" type="amcl_doris" name="amcl_doris" output="screen">
   <!-- Publish scans from best pose at a max of 10 Hz -->
   <param name="odom_model_type" value="diff"/>
   <param name="odom_alpha5" value="0.1"/>
   <param name="transform_tolerance" value="0.2" />
   <param name="gui_publish_rate" value="10.0"/>
   <param name="laser_max_beams" value="30"/>
-  <param name="min_particles" value="50"/>
-  <param name="max_particles" value="100"/>
+  <param name="min_particles" value="100"/>
+  <param name="max_particles" value="300"/>
   <param name="kld_err" value="0.05"/>
   <param name="kld_z" value="0.99"/>
   <param name="odom_alpha1" value="0.2"/>
@@ -47,7 +47,7 @@
 	<param name="NUM_CAM" value ="3" />
 	<param name = "marker_model_type" value="observation_likelihood"/>
 	<!--<param name = "odom_frame_id" value="Doris/odom" />-->
-	<param name= "base_frame_id" value="Doris/cuerpo" />
+	<param name="base_frame_id" value="Doris/cuerpo" />
 	<param name="use_map_topic" value="true"/>
 	<param name="marker_z_hit" value="0.5"/>
 	<param name="marker_z_rand" value ="0.5"/>

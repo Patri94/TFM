@@ -81,6 +81,7 @@ public:
     std::vector<Marcador> getMap(void);
     void OdomCallback (const nav_msgs::OdometryConstPtr& msg);
     void detectorTask(void);
+    std::vector<Marcador> orderDetection(std::vector<Marcador> detection);
 
 };
 

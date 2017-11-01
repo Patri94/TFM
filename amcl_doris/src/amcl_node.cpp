@@ -31,11 +31,11 @@
 // Signal handling
 #include <signal.h>
 
-#include "amcl/map/map.h"
-#include "amcl/pf/pf.h"
-#include "amcl/sensors/amcl_odom.h"
-#include "amcl/sensors/amcl_laser.h"
-#include "amcl/sensors/amcl_marker.h"
+#include "amcl_doris/map/map.h"
+#include "amcl_doris/pf/pf.h"
+#include "amcl_doris/sensors/amcl_odom.h"
+#include "amcl_doris/sensors/amcl_laser.h"
+#include "amcl_doris/sensors/amcl_marker.h"
 #include "detector/messagedet.h"
 #include "detector/marker.h"
 
@@ -292,10 +292,12 @@ class AmclNode
     void LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros);
     void loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras);
     void imageCallback(const sensor_msgs::ImageConstPtr& msg);
-    void detectionCallback (const detector::messagedet msg);
+    void detectionCallback (const detector::messagedet::ConstPtr &msg);
     std::vector<geometry_msgs::Point> CalculateRelativePose (Marcador Marca, geometry_msgs::Pose CamaraMundo);
     //Prob related parameters
     double marker_z_hit,marker_z_rand,marker_sigma_hit;
+    message_filters::Subscriber<detector::messagedet>* marker_detection_sub_;
+    tf::MessageFilter<detector::messagedet>* marker_detection_filter_;
 
 
 
@@ -474,8 +476,6 @@ AmclNode::AmclNode() :
                                                         odom_frame_id_, 
                                                         100);
 
-  //laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
-                                                 //  this, _1));
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
 //cout<<"11"<<endl;
   if(use_map_topic_) {
@@ -557,19 +557,17 @@ AmclNode::AmclNode() :
 
 }
   tf::Quaternion quat;
-  quat=tf::createQuaternionFromRPY(0,0,1.57);
+  /*quat=tf::createQuaternionFromRPY(0,0,1.57);
   cout<<"quaternion initial pose"<<endl;
   cout<<quat.getX()<<endl;
   cout<<quat.getY()<<endl;
   cout<<quat.getZ()<<endl;
   cout<<quat.getW()<<endl;
-  waitKey();
+  waitKey();*/
   //cout<<"cam"<<cameras.size()<<endl;
   this->loadTFCameras(cameras);
   this->LoadMapMarkers(IDs,Centros);
-  dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
-  dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
-  dsrv_->setCallback(cb);
+
 
   //this->publicar= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose",1);
   //this->publicar_cam1= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam1",1);
@@ -577,9 +575,16 @@ AmclNode::AmclNode() :
   //this->publicar_cam3= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose_cam3",1);
  //this->publicar_mapa= private_nh_.advertise<visualization_msgs::Marker> ("mapa",1);
   this->detector_subs= private_nh_.subscribe<sensor_msgs::Image> ("/DetectorNode/detector_output",1,&AmclNode::imageCallback,this);
-  this->corners_subs=private_nh_.subscribe<detector::messagedet>("/DetectorNode/detection",1,&AmclNode::detectionCallback,this);
 
+  marker_detection_sub_=new message_filters::Subscriber<detector::messagedet>(nh_,"DetectorNode/detection",100);
+  marker_detection_filter_=new tf::MessageFilter<detector::messagedet>(*marker_detection_sub_,*tf_,odom_frame_id_,100);
+  marker_detection_filter_->registerCallback(boost::bind(&AmclNode::detectionCallback,
+                                                  this, _1));
+  //this->corners_subs=private_nh_.subscribe<detector::messagedet>("/DetectorNode/detection",1,&AmclNode::detectionCallback,this);
 
+  dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
+  dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
+  dsrv_->setCallback(cb);
 
   //Configuration
 
@@ -1593,7 +1598,7 @@ void
 AmclNode::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
 {
   cout<<"he recibido initial pose"<<endl;
-  waitKey();
+  //waitKey();
   handleInitialPoseMessage(*msg);
 }
 
@@ -1790,16 +1795,16 @@ void AmclNode::imageCallback(const sensor_msgs::ImageConstPtr& msg){
 
 
 //Include all functions in callback
-void AmclNode::detectionCallback (const detector::messagedet msg){
+void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
     std::vector<Marcador> observation;
-    for(int i=0;i<msg.DetectedMarkers.size();i++){
+    for(int i=0;i<msg->DetectedMarkers.size();i++){
         Marcador marker;
         std::vector<cv::Point2f> corners;
-        marker.setMarkerId(int(msg.DetectedMarkers[i].ID.data));
+        marker.setMarkerId(int(msg->DetectedMarkers[i].ID.data));
         for (int j=0;j<4;j++){
             cv::Point2f corner;
-            corner.x=msg.DetectedMarkers[i].Corners[j].x;
-            corner.y=msg.DetectedMarkers[i].Corners[j].y;
+            corner.x=msg->DetectedMarkers[i].Corners[j].x;
+            corner.y=msg->DetectedMarkers[i].Corners[j].y;
             corners.push_back(corner);
         }
         marker.MarkerPoints(corners);
@@ -1820,7 +1825,7 @@ void AmclNode::detectionCallback (const detector::messagedet msg){
        // cout<<"odom"<<getOdomPose(latest_odom_pose_, pose.v[0], pose.v[1], pose.v[2],
                 //msg.header.stamp, base_frame_id_)<<endl;
         if(!(getOdomPose(latest_odom_pose_, pose.v[0], pose.v[1], pose.v[2],
-                          msg.header.stamp, base_frame_id_)))
+                          msg->header.stamp, base_frame_id_)))
           {
             ROS_ERROR("Couldn't determine robot's pose associated with camera info");
             return;
@@ -1956,7 +1961,7 @@ void AmclNode::detectionCallback (const detector::messagedet msg){
               geometry_msgs::PoseWithCovarianceStamped p;
               // Fill in the header
               p.header.frame_id = global_frame_id_;
-              p.header.stamp = ros::Time::now();
+              p.header.stamp = msg->header.stamp;
               // Copy in the pose with the maximum weigh
               p.pose.pose.position.x = marker_hyps[max_weight_hyp].pf_pose_mean.v[0];
               p.pose.pose.position.y = marker_hyps[max_weight_hyp].pf_pose_mean.v[1];
@@ -1992,16 +1997,17 @@ void AmclNode::detectionCallback (const detector::messagedet msg){
                                                        0.0));
                       //cout<<base_frame_id_<<endl;
                       tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(),
-                                                            msg.header.stamp,
+                                                            ros::Time(0),
                                                             base_frame_id_);
                       //cout<<odom_frame_id_<<endl;
                       this->tf_->transformPose(odom_frame_id_,
                                                tmp_tf_stamped,
                                                odom_to_map);
                       //cout<<"publica tf base_link->odom"<<endl;
-              } catch(tf::TransformException)
+              } catch(tf::TransformException e)
               {
-                cout<<"Failed to subtract base to odom transform"<<endl;
+                cout<<"Failed to subtract base to odom transform "<<e.what()<<endl;
+                waitKey();
                 return;
              }
               latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),
@@ -2012,11 +2018,11 @@ void AmclNode::detectionCallback (const detector::messagedet msg){
                          {
                            // We want to send a transform that is good up until a
                            // tolerance time so that odom can be used
-                           ros::Time transform_expiration = (msg.header.stamp +
+                           ros::Time transform_expiration = (msg->header.stamp +
                                                              transform_tolerance_);
                            //cout<<"entro en publicar tf"<<endl;
                            tf::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
-                                                               msg.header.stamp,
+                                                               msg->header.stamp,
                                                                global_frame_id_, odom_frame_id_);
                            //cout<<"Publicar tf odom ->map"<<endl;
                            this->tfb_->sendTransform(tmp_tf_stamped);
@@ -2034,7 +2040,7 @@ void AmclNode::detectionCallback (const detector::messagedet msg){
     {
       // Nothing changed, so we'll just republish the last transform, to keep
       // everybody happy.
-      ros::Time transform_expiration = (msg.header.stamp +
+      ros::Time transform_expiration = (msg->header.stamp +
                                         transform_tolerance_);
       tf::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
                                           transform_expiration,

@@ -101,7 +101,7 @@ cDetector::~cDetector(){
  * @param cam_info
  */
 void cDetector::infoCallback(const sensor_msgs::ImageConstPtr& msg){
-    cout<<"Callback"<<endl;
+    //cout<<"Callback"<<endl;
     this->cam1 = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
      this->ms1 = cv_bridge::CvImage(std_msgs::Header(), "bgr8", this->cam1).toImageMsg();
    // cv::imshow("cam1", this->cam1);
@@ -136,10 +136,10 @@ void cDetector::imageCallback3(const sensor_msgs::ImageConstPtr& msg){
  * Make a single image out of all cameras.
  */
 void cDetector::imageBlending(void){
-    cout<<"llego"<<endl;
-    cout<<this->cam1.empty()<<this->cam2.empty()<<this->cam3.empty()<<endl;
+    //cout<<"llego"<<endl;
+   // cout<<this->cam1.empty()<<this->cam2.empty()<<this->cam3.empty()<<endl;
     if (!(this->cam1.empty()) && !(this->cam2.empty()) && !(this->cam3.empty())){
-        cout<<"entro"<<endl;
+        //cout<<"entro"<<endl;
     cv::hconcat(this->cam2,this->cam1,this->comb);
     cv::hconcat(this->comb,this->cam3,this->comb);
     //cv::imshow("combi", this->comb);
@@ -473,6 +473,7 @@ void cDetector::recognizeMarkers(){
 void cDetector::createMessage(void){
     if (!(this->comb.empty())){
         detector::messagedet msg_det;
+        OptMarkers=this->orderDetection(OptMarkers);
        for (int i=0;i<this->OptMarkers.size();i++){
                 detector::marker detected;
                 std::vector<cv::Point2f> corners_f =this->OptMarkers[i].getMarkerPoints();
@@ -487,6 +488,7 @@ void cDetector::createMessage(void){
                 msg_det.DetectedMarkers.push_back(detected);
       }
         //cout<<"detectados"<<msg_det.DetectedMarkers.size()<<endl;
+         msg_det.header.frame_id="Doris/cam1_link";
          msg_det.header.stamp=ros::Time::now();
          this->pub_comb.publish(this->comb_msg);
          this->publish_detection.publish(msg_det);
@@ -556,7 +558,25 @@ int cDetector::getMapSize(void){
     return this->map.size();
 }
 
+std::vector<Marcador> cDetector::orderDetection(std::vector<Marcador> detection){
+    Marcador temp;
+    for (int i=0; i<detection.size();i++){
+        if(detection[i].getMarkerID()<17 || detection[i].getMarkerID()>22){
+            for(int k=i;k<detection.size();k++){
+                detection[k]=detection[k+1];
+            }
 
+        }
+        for (int j=0; j<detection.size()-1;j++){
+            if (detection[j].getMarkerID()>detection[j+1].getMarkerID()){
+                temp=detection[j+1];
+                detection[j+1]=detection[j];
+                detection[j]=temp;
+            }
+        }
+    }
+    return detection;
+}
 
 
 

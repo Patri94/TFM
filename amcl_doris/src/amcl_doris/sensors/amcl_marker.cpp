@@ -34,7 +34,7 @@
 #include <unistd.h>
 #include <vector>
 
-#include "amcl/sensors/amcl_marker.h"
+#include "amcl_doris/sensors/amcl_marker.h"
 
 using namespace amcl;
 
@@ -103,28 +103,30 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
   double pz,p;
   std::vector<float> z;
   self = (AMCLMarker*) data->sensor;
+  std::vector<Marcador> observation=data->markers_obs;
   if (!self->image_filter.empty()){
   //self->z_hit=100;
   self->z_hit=1.0;
-  self->sigma_hit=20.0;
   total_weight = 0.0;
   int i;
   std::vector<Marcador> detected_from_map;
   float gaussian_norm=1/(sqrt(2*M_PI*self->sigma_hit));
 
   //Extract only detected markers from map
-  for(int k=0;k<data->markers_obs.size();k++){
+  for(int k=0;k<observation.size();k++){
         for (int j=0; j<self->map.size();j++){
-            if(self->map[j].getMarkerID()==data->markers_obs[k].getMarkerID()){
+            if(self->map[j].getMarkerID()==observation[k].getMarkerID()){
                 detected_from_map.push_back(self->map[j]);
             }
 
         }
   }
- /* for (int i=0;i<detected_from_map.size();i++){
-      cout<<detected_from_map[i].getMarkerID()<<endl;
+  /*for (int i=0;i<observation.size();i++){
+      cout<<observation.getMarkerID()<<endl;
   }*/
   //waitKey();
+  //cout<<"map"<<detected_from_map.size()<<endl;
+  //cout<<"observed"<<observation.size()<<endl;
   //cout<<"camaras"<<self->num_cam<<endl;
   //cout<<"imagen"<<self->image_width<<endl;
   for (i=0;i< set->sample_count; i++){
@@ -134,42 +136,42 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
       p=1.0;
       //Initialize parameters
       double z_hit_denom = 2 * self->sigma_hit * self->sigma_hit;
-      cout<<"after zhitdenom"<<z_hit_denom<<endl;
+      //cout<<"after zhitdenom"<<z_hit_denom<<endl;
       geometry_msgs::Pose sample_pose;
       tf::Quaternion quat;
       geometry_msgs::Quaternion quat_msg;
       sample_pose.position.x=pose.v[0];
       sample_pose.position.y=pose.v[1];
       sample_pose.position.z=0.0;
-      cout<<"Pose particula"<<endl;
+      /*cout<<"Pose particula"<<endl;
       cout<<"x: "<<sample_pose.position.x<<endl;
       cout<<"y: "<<sample_pose.position.y<<endl;
-      cout<<pose.v[2]<<endl;
+      cout<<pose.v[2]<<endl;*/
 
       quat.setRPY(0,0,pose.v[2]);
       tf::quaternionTFToMsg(quat,quat_msg);
       sample_pose.orientation=quat_msg;
       //cout<<"after building pose"<<endl;
-      std::vector<Marcador> observation=data->markers_obs;
+      //cout<<"weight before"<<sample->weight<<endl;
       //cout<<"observation size"<<observation.size()<<endl;
-      for (int j=0;j< data->markers_obs.size();j++){
+      for (int j=0;j<observation.size();j++){
           //cout<<"mapID"<<detected_from_map[j].getMarkerID()<<endl;
           //cout<<"detectedID"<<observation[j].getMarkerID()<<endl;
           //waitKey();
 
           //Calculate projection of marker corners
           //cout<<"detectados"<<detected_from_map.size()<<endl;
-          cout<<"antes de relative pose"<<endl;
+         // cout<<"antes de relative pose"<<endl;
           std::vector<geometry_msgs::Point> relative_to_cam=self->CalculateRelativePose(detected_from_map[j],sample_pose);
-          cout<<"after relative pose"<<endl;
+          //cout<<"after relative pose"<<endl;
           std::vector<cv::Point2d> projection=self->projectPoints(relative_to_cam);
           //cout<<projection.size()<<endl;
-          line (self->image_filter,projection[0], projection[1],Scalar(0,0,255),1);
+          /*line (self->image_filter,projection[0], projection[1],Scalar(0,0,255),1);
           line (self->image_filter,projection[1], projection[2],Scalar(0,0,255),1);
           line (self->image_filter,projection[2], projection[3],Scalar(0,0,255),1);
           line (self->image_filter,projection[3], projection[0],Scalar(0,0,255),1);
-          imshow("Proyeccion",self->image_filter);
-          waitKey(30);
+          imshow("Proyeccion",self->image_filter);*/
+          //waitKey(30);
           //cout<<"after image"<<endl;
           //Calculate mean error in pixels
           //cout<<projection.size()<<endl;
@@ -188,8 +190,8 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           z=self->calculateError(observation[j].getMarkerPoints(),projection);
           for (int i=0;i<4;i++){
               pz=0.0;
-              pz+=gaussian_norm* exp(-(z[i]*z[i]) / z_hit_denom);
-              cout<<"pz: "<<pz<<endl;
+              pz+=exp(-(z[i]*z[i]) / z_hit_denom);
+              //cout<<"pz: "<<pz<<endl;
               p+=pz*pz*pz;
           }
 
@@ -209,18 +211,17 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           //assert(pz <= 1.0);
           //assert(pz >= 0.0);
 
-          //Combination of prababilities
-
-          cout<<"p:"<<p<<endl;
+          //cout<<"p:"<<p<<endl;
 
       }
       sample->weight *= p;
+      //cout<<"weight of sample"<<sample->weight<<endl;
       total_weight += sample->weight;
-      cout<<"despues de asignar peso a particula"<<endl;
+      //cout<<"despues de asignar peso a particula"<<endl;
 
 
   }
-  cout<<"total weight"<<total_weight<<endl;
+  //cout<<"total weight"<<total_weight<<endl;
   return(total_weight);
   //cout<<"hesalido Marker"<<endl;
   }
@@ -247,24 +248,27 @@ std::vector<float> AMCLMarker::calculateError(std::vector<cv::Point2f> projectio
 }
 
 std::vector<cv::Point2d> AMCLMarker::projectPoints(std::vector<geometry_msgs::Point> cam_center_coord){
+   //cout<<"entra en relative"<<endl;
    geometry_msgs::PointStamped cam_center_coord_st,cam_trans_coord_st;
     std::vector<cv::Point2d> Pixels;
     for (int i=0;i<cam_center_coord.size();i++){
          cam_center_coord_st.point=cam_center_coord[i];
     float angulo;
     angulo = atan2(double(cam_center_coord[i].x),double(cam_center_coord[i].z));
+    angulo=fmod(angulo,2*M_PI);
     if (angulo<0){
             angulo=angulo+(2*M_PI);
         }
+    //cout<<"angulo"<<angulo<<endl;
     cv::Point2d Pixel,offset;
     //cout<<num_cam<<" "<<image_width<<endl;
     offset.x=image_width/num_cam;
     offset.y=0;
     //cout<<"offset"<<offset.x;
     cv::Point3d Coord;
-    if (angulo>M_PI and angulo<5*M_PI/6){
+    if (angulo>M_PI and angulo<5.2333333){
            //camera2
-            cout<<"entra2"<<endl;
+            //cout<<"entra2"<<endl;
             tf2::doTransform(cam_center_coord_st,cam_trans_coord_st,tf_cameras[1]);
             Coord.x=cam_trans_coord_st.point.x;
             Coord.y=cam_trans_coord_st.point.y;
@@ -275,7 +279,7 @@ std::vector<cv::Point2d> AMCLMarker::projectPoints(std::vector<geometry_msgs::Po
         }else{
             //CAM3
             if(angulo>M_PI/3 and angulo<M_PI){
-                cout<<"entra3"<<endl;
+                //cout<<"entra3"<<endl;
                 tf2::doTransform(cam_center_coord_st,cam_trans_coord_st,tf_cameras[2]);
                 Coord.x=cam_trans_coord_st.point.x;
                 Coord.y=cam_trans_coord_st.point.y;
@@ -283,7 +287,7 @@ std::vector<cv::Point2d> AMCLMarker::projectPoints(std::vector<geometry_msgs::Po
                 Pixel=this->pin_model.project3dToPixel(Coord);
                 Pixel=Pixel+offset;
                 }else{//CAM1
-                cout<<"entra1"<<endl;
+                //cout<<"entra1"<<endl;
                 tf2::doTransform(cam_center_coord_st,cam_trans_coord_st,tf_cameras[0]);
                 Coord.x=cam_trans_coord_st.point.x;
                 Coord.y=cam_trans_coord_st.point.y;
@@ -293,7 +297,7 @@ std::vector<cv::Point2d> AMCLMarker::projectPoints(std::vector<geometry_msgs::Po
         }
      Pixels.push_back(Pixel);
         }
-    cout<<"sale"<<endl;
+    //cout<<"sale"<<endl;
 
     return Pixels;
 
@@ -333,6 +337,7 @@ std::vector<geometry_msgs::Point> AMCLMarker::CalculateRelativePose (Marcador Ma
     RobTCam.setRotation(RotCam);
     tf::Quaternion QMundRCam (CamaraMundo.orientation.x,CamaraMundo.orientation.y,CamaraMundo.orientation.z,CamaraMundo.orientation.w);
     tf::Vector3 Trasl1 (CamaraMundo.position.x,CamaraMundo.position.y,CamaraMundo.position.z);
+    //cout<<"after transformation"<<endl;
     //From World to Robot
     MundTrob.setRotation(QMundRCam);
     MundTrob.setOrigin(Trasl1);
@@ -355,13 +360,14 @@ std::vector<geometry_msgs::Point> AMCLMarker::CalculateRelativePose (Marcador Ma
     transformTFToMsg(invRobotTCam,invRobotTCamSt.transform);
     std::vector<geometry_msgs::Point> RelativaCorners,PoseWorld;
     //std::vector<geometry_msgs::Transform> Corners = Marca.getTransformCorners();
+    //cout<<"antes de get pose world"<<endl;
     PoseWorld=Marca.getPoseWorld();
     for (int i=0;i<4;i++){
             geometry_msgs::PointStamped CornerRelPose,Inter,WorldPose;
             WorldPose.point=PoseWorld[i];
              tf2::doTransform(WorldPose,Inter,invMundTrobStamped);
              tf2::doTransform(Inter,CornerRelPose,invRobotTCamSt);
-            RelativaCorners.push_back(CornerRelPose.point);
+             RelativaCorners.push_back(CornerRelPose.point);
 
         }
     //cout<<"Tengo la posicion relativa"<<endl;
