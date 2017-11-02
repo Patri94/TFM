@@ -1688,7 +1688,9 @@ void
 AmclNode::applyInitialPose()
 {
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
+  cout<<"initpose"<<endl;
   if( initial_pose_hyp_ != NULL && map_ != NULL ) {
+    cout<<"initpose2"<<endl;
     pf_init(pf_, initial_pose_hyp_->pf_pose_mean, initial_pose_hyp_->pf_pose_cov);
     pf_init_ = false;
 
@@ -1810,6 +1812,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
         marker.MarkerPoints(corners);
         observation.push_back(marker);
     }
+    //observation.clear();
     //cout<<"detected"<<observation.size()<<endl;
     tf_broadcast_=true;
     //cout<<"tf_broadcast"<<tf_broadcast_<<endl;
@@ -1887,6 +1890,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
             marker_->model_type=marker_model_type_;
             marker_->image_width=image_width;
             marker_->num_cam=num_cam;
+            cout<<"cuantos"<<observation.size()<<endl;
             //cout<<global_frame_id_<<endl;
             //cout<<odom_frame_id_<<endl;
             //Update filter with marker data
@@ -1895,6 +1899,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
             //cout<<"image_width"<<image_width<<endl;
             if(!(++resample_count_ % resample_interval_))
                 {
+                  cout<<"resample"<<endl;
                   pf_update_resample(pf_);
                   resampled = true;
             }
@@ -1902,7 +1907,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
             pf_sample_set_t* set = pf_->sets + pf_->current_set;
             ROS_DEBUG("Num samples: %d\n", set->sample_count);
 
-    //Publish resulting particle cloud
+          //Publish resulting particle cloud
           if(!m_force_update){
           geometry_msgs::PoseArray cloud_msg;
           cloud_msg.header.stamp = ros::Time::now();
@@ -1940,6 +1945,8 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
                 ROS_ERROR("Couldn't get stats on cluster %d", hyp_count);
                 break;
         }
+
+
         marker_hyps[hyp_count].weight = weight;
         marker_hyps[hyp_count].pf_pose_mean = pose_mean;
         marker_hyps[hyp_count].pf_pose_cov = pose_cov;
@@ -1950,6 +1957,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
                 max_weight_hyp = hyp_count;
         }
         }
+        cout<<"max weight"<<max_weight<<endl;
         if(max_weight > 0.0)
             {
               ROS_DEBUG("Max weight pose: %.3f %.3f %.3f",

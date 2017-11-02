@@ -83,8 +83,14 @@ bool AMCLMarker::UpdateSensor(pf_t *pf, AMCLSensorData *data)
   // Apply the laser sensor model
     cout<<"update sensor marker cpp"<<endl;
  if(this->model_type == MARKER_MODEL_LIKELIHOOD)
-    //cout<<"afterif"<<endl;
-    //cout<<data->sensor->markers_obs.size()<<endl;
+    cout<<"afterif"<<endl;
+   /* if ((data==data)){
+        cout<<"good data"<<endl;
+    }
+    if ((pf==pf)){
+        cout<<"good pf"<<endl;
+    }*/
+    //cout<<(AMCLMarkerData*)data->markers_obs->size()<<endl;
     pf_update_sensor(pf, (pf_sensor_model_fn_t) ObservationLikelihood, data);
   return true;
 }
@@ -110,7 +116,7 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
   total_weight = 0.0;
   int i;
   std::vector<Marcador> detected_from_map;
-  float gaussian_norm=1/(sqrt(2*M_PI*self->sigma_hit));
+  float gaussian_norm=1/(sqrt(2*M_PI*self->sigma_hit*self->sigma_hit));
 
   //Extract only detected markers from map
   for(int k=0;k<observation.size();k++){
@@ -142,12 +148,16 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
       geometry_msgs::Quaternion quat_msg;
       sample_pose.position.x=pose.v[0];
       sample_pose.position.y=pose.v[1];
-      sample_pose.position.z=0.0;
-      /*cout<<"Pose particula"<<endl;
+      sample_pose.position.z=0.05;
+      cout<<"Pose particula"<<endl;
       cout<<"x: "<<sample_pose.position.x<<endl;
       cout<<"y: "<<sample_pose.position.y<<endl;
-      cout<<pose.v[2]<<endl;*/
 
+      pose.v[2]=fmod(pose.v[2],2*M_PI);
+      if (pose.v[2]<0){
+          pose.v[2]=pose.v[2]+2*M_PI;
+      }
+      cout<<pose.v[2]<<endl;
       quat.setRPY(0,0,pose.v[2]);
       tf::quaternionTFToMsg(quat,quat_msg);
       sample_pose.orientation=quat_msg;
@@ -166,12 +176,12 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           //cout<<"after relative pose"<<endl;
           std::vector<cv::Point2d> projection=self->projectPoints(relative_to_cam);
           //cout<<projection.size()<<endl;
-          /*line (self->image_filter,projection[0], projection[1],Scalar(0,0,255),1);
+        /*  line (self->image_filter,projection[0], projection[1],Scalar(0,0,255),1);
           line (self->image_filter,projection[1], projection[2],Scalar(0,0,255),1);
           line (self->image_filter,projection[2], projection[3],Scalar(0,0,255),1);
           line (self->image_filter,projection[3], projection[0],Scalar(0,0,255),1);
-          imshow("Proyeccion",self->image_filter);*/
-          //waitKey(30);
+          imshow("Proyeccion",self->image_filter);
+          waitKey(30);*/
           //cout<<"after image"<<endl;
           //Calculate mean error in pixels
           //cout<<projection.size()<<endl;
@@ -191,7 +201,7 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           for (int i=0;i<4;i++){
               pz=0.0;
               pz+=exp(-(z[i]*z[i]) / z_hit_denom);
-              //cout<<"pz: "<<pz<<endl;
+              cout<<"pz: "<<pz<<endl;
               p+=pz*pz*pz;
           }
 
@@ -211,11 +221,11 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           //assert(pz <= 1.0);
           //assert(pz >= 0.0);
 
-          //cout<<"p:"<<p<<endl;
+          cout<<"p:"<<p<<endl;
 
       }
       sample->weight *= p;
-      //cout<<"weight of sample"<<sample->weight<<endl;
+      cout<<"weight of sample"<<sample->weight<<endl;
       total_weight += sample->weight;
       //cout<<"despues de asignar peso a particula"<<endl;
 
@@ -241,6 +251,7 @@ std::vector<float> AMCLMarker::calculateError(std::vector<cv::Point2f> projectio
         //cout<<"errory:"<<errory<<endl;
         error+=sqrt((errorx*errorx)+(errory*errory));
         errorv.push_back(error);
+        //cout<<"error"<<error<<endl;
     }
     //cout<<"error"<<error<<endl;
     return errorv;

@@ -561,12 +561,16 @@ int cDetector::getMapSize(void){
 std::vector<Marcador> cDetector::orderDetection(std::vector<Marcador> detection){
     Marcador temp;
     for (int i=0; i<detection.size();i++){
+
         if(detection[i].getMarkerID()<17 || detection[i].getMarkerID()>22){
-            for(int k=i;k<detection.size();k++){
+            //cout<<"tengo que quitar"<<endl;
+            for(int k=i;k<detection.size()-1;k++){
                 detection[k]=detection[k+1];
             }
+            detection.resize(detection.size()-1);
 
         }
+
         for (int j=0; j<detection.size()-1;j++){
             if (detection[j].getMarkerID()>detection[j+1].getMarkerID()){
                 temp=detection[j+1];
