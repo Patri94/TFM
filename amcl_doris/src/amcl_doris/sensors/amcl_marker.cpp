@@ -81,9 +81,9 @@ AMCLMarker::SetModelLikelihoodField(double z_hit,
 bool AMCLMarker::UpdateSensor(pf_t *pf, AMCLSensorData *data)
 {
   // Apply the laser sensor model
-    cout<<"update sensor marker cpp"<<endl;
+   // cout<<"update sensor marker cpp"<<endl;
  if(this->model_type == MARKER_MODEL_LIKELIHOOD)
-    cout<<"afterif"<<endl;
+    //cout<<"afterif"<<endl;
    /* if ((data==data)){
         cout<<"good data"<<endl;
     }
@@ -201,7 +201,7 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           for (int i=0;i<4;i++){
               pz=0.0;
               pz+=exp(-(z[i]*z[i]) / z_hit_denom);
-              cout<<"pz: "<<pz<<endl;
+             // cout<<"pz: "<<pz<<endl;
               p+=pz*pz*pz;
           }
 
@@ -221,11 +221,11 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           //assert(pz <= 1.0);
           //assert(pz >= 0.0);
 
-          cout<<"p:"<<p<<endl;
+         // cout<<"p:"<<p<<endl;
 
       }
       sample->weight *= p;
-      cout<<"weight of sample"<<sample->weight<<endl;
+      //cout<<"weight of sample"<<sample->weight<<endl;
       total_weight += sample->weight;
       //cout<<"despues de asignar peso a particula"<<endl;
 
