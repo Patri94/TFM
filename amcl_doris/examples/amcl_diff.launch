@@ -49,9 +49,10 @@
 	<!--<param name = "odom_frame_id" value="Doris/odom" />-->
 	<param name="base_frame_id" value="Doris/cuerpo" />
 	<param name="use_map_topic" value="true"/>
-	<param name="marker_z_hit" value="0.5"/>
-	<param name="marker_z_rand" value ="0.5"/>
+	<param name="marker_z_hit" value="1.0"/>
+	<param name="marker_z_rand" value ="0.005"/>
 	<param name="marker_sigma_hit" value ="0.01"/>
+	<param name="marker_landa" value="5.0"/>
 
 </node>
 </launch>

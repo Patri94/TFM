@@ -295,7 +295,7 @@ class AmclNode
     void detectionCallback (const detector::messagedet::ConstPtr &msg);
     std::vector<geometry_msgs::Point> CalculateRelativePose (Marcador Marca, geometry_msgs::Pose CamaraMundo);
     //Prob related parameters
-    double marker_z_hit,marker_z_rand,marker_sigma_hit;
+    double marker_z_hit,marker_z_rand,marker_sigma_hit,marker_landa;
     message_filters::Subscriber<detector::messagedet>* marker_detection_sub_;
     tf::MessageFilter<detector::messagedet>* marker_detection_filter_;
 
@@ -476,8 +476,7 @@ AmclNode::AmclNode() :
                                                         odom_frame_id_, 
                                                         100);
 
-  initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
-//cout<<"11"<<endl;
+
   if(use_map_topic_) {
     map_sub_ = nh_.subscribe("map", 1, &AmclNode::mapReceived, this);
     ROS_INFO("Subscribed to map topic.");
@@ -510,6 +509,8 @@ AmclNode::AmclNode() :
   private_nh_.getParam("/amcl_doris/marker_z_hit",marker_z_hit);
   private_nh_.getParam("/amcl_doris/marker_z_rand",marker_z_rand);
   private_nh_.getParam("/amcl_doris/marker_sigma_hit",marker_sigma_hit);
+  private_nh_.getParam("/amcl_doris/marker_landa",marker_landa);
+  cout<<"marker_landa"<<marker_landa<<endl;
   //Reading mapfile
   std::vector<geometry_msgs::Pose> Centros;
   std::vector<int> IDs;
@@ -582,7 +583,8 @@ AmclNode::AmclNode() :
                                                   this, _1));
   m_force_update = false;
   //this->corners_subs=private_nh_.subscribe<detector::messagedet>("/DetectorNode/detection",1,&AmclNode::detectionCallback,this);
-
+  initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
+//cout<<"11"<<endl;
   dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
   dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
   dsrv_->setCallback(cb);
@@ -739,7 +741,7 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   ROS_ASSERT(marker_);
   if (marker_model_type_==MARKER_MODEL_LIKELIHOOD){
       ROS_INFO("Initializing marker filter...");
-      marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit);
+      marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit,marker_landa);
       //cout<<marker_map.size()<<endl;
       marker_->map=marker_map;
       //cout<<tf_cameras.size()<<endl;
@@ -747,6 +749,11 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
       marker_->num_cam=num_cam;
       marker_->image_width=image_width;
   }
+
+  delete marker_detection_filter_;
+  marker_detection_filter_=new tf::MessageFilter<detector::messagedet>(*marker_detection_sub_,*tf_,odom_frame_id_,100);
+  marker_detection_filter_->registerCallback(boost::bind(&AmclNode::detectionCallback,
+                                                  this, _1));
 
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
 }
@@ -1030,7 +1037,7 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
   marker_=new AMCLMarker();
   ROS_ASSERT(marker_);
   if (marker_model_type_==MARKER_MODEL_LIKELIHOOD){
-      marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit);
+      marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit,marker_landa);
       marker_->map=marker_map;
       marker_->tf_cameras=tf_cameras;
       marker_->num_cam=num_cam;
@@ -1802,6 +1809,10 @@ void AmclNode::imageCallback(const sensor_msgs::ImageConstPtr& msg){
 
 //Include all functions in callback
 void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
+    if (map_==NULL){
+        return;
+    }
+    boost::recursive_mutex::scoped_lock lr(configuration_mutex_);
     std::vector<Marcador> observation;
     for(int i=0;i<msg->DetectedMarkers.size();i++){
         Marcador marker;
@@ -1868,6 +1879,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
 
           if(!pf_init_)
           {
+            cout<<"not init"<<endl;
             // Pose at last filter update
             pf_odom_pose_ = pose;
 

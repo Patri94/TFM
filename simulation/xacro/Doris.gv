@@ -1,0 +1,20 @@
+digraph G {
+node [shape=box];
+"cuerpo" [label="cuerpo"];
+"contrapeso" [label="contrapeso"];
+"left_wheel" [label="left_wheel"];
+"mastil" [label="mastil"];
+"plataforma" [label="plataforma"];
+"right_wheel" [label="right_wheel"];
+node [shape=ellipse, color=blue, fontcolor=blue];
+"cuerpo" -> "contrap_cuerpo" [label="xyz: -0.1 0 0.33 \nrpy: 0 -0 0"]
+"contrap_cuerpo" -> "contrapeso"
+"cuerpo" -> "left_axis" [label="xyz: 0 0.15 0 \nrpy: 0 -0 0"]
+"left_axis" -> "left_wheel"
+"cuerpo" -> "mastil_cuerpo" [label="xyz: 0 0 0.33 \nrpy: 0 -0 0"]
+"mastil_cuerpo" -> "mastil"
+"mastil" -> "mastil_plat" [label="xyz: 0 0 0.95 \nrpy: 0 -0 0"]
+"mastil_plat" -> "plataforma"
+"cuerpo" -> "right_axis" [label="xyz: 0 -0.15 0 \nrpy: 0 -0 0"]
+"right_axis" -> "right_wheel"
+}

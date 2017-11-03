@@ -63,12 +63,14 @@ AMCLMarker::~AMCLMarker()
 void 
 AMCLMarker::SetModelLikelihoodField(double z_hit,
                                    double z_rand,
-                                   double sigma_hit)
+                                   double sigma_hit,
+                                   double landa)
 {
   this->model_type = MARKER_MODEL_LIKELIHOOD;
   this->z_hit = z_hit;
-  //this->z_rand = z_rand;
+  this->z_rand = z_rand;
   this->sigma_hit = sigma_hit;
+  this->landa=landa;
 
 
 }
@@ -100,7 +102,7 @@ bool AMCLMarker::UpdateSensor(pf_t *pf, AMCLSensorData *data)
 
 double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* set)
 {
-  cout<<"in particle filter"<<endl;
+  //cout<<"in particle filter"<<endl;
   AMCLMarker *self;
   pf_sample_t *sample;
   pf_vector_t pose;
@@ -112,7 +114,7 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
   std::vector<Marcador> observation=data->markers_obs;
   if (!self->image_filter.empty()){
   //self->z_hit=100;
-  self->z_hit=1.0;
+  //self->z_hit=1.0;
   total_weight = 0.0;
   int i;
   std::vector<Marcador> detected_from_map;
@@ -142,22 +144,24 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
       p=1.0;
       //Initialize parameters
       double z_hit_denom = 2 * self->sigma_hit * self->sigma_hit;
+      //sqrt(2) beacuse of the normalization with height and width of image.
+      double z_rand_mult=1.0/sqrt(2);
       //cout<<"after zhitdenom"<<z_hit_denom<<endl;
       geometry_msgs::Pose sample_pose;
       tf::Quaternion quat;
       geometry_msgs::Quaternion quat_msg;
       sample_pose.position.x=pose.v[0];
       sample_pose.position.y=pose.v[1];
-      sample_pose.position.z=0.05;
-      cout<<"Pose particula"<<endl;
+      sample_pose.position.z=0.0;
+      /*cout<<"Pose particula"<<endl;
       cout<<"x: "<<sample_pose.position.x<<endl;
-      cout<<"y: "<<sample_pose.position.y<<endl;
+      cout<<"y: "<<sample_pose.position.y<<endl;*/
 
       pose.v[2]=fmod(pose.v[2],2*M_PI);
       if (pose.v[2]<0){
           pose.v[2]=pose.v[2]+2*M_PI;
       }
-      cout<<pose.v[2]<<endl;
+      //cout<<pose.v[2]<<endl;
       quat.setRPY(0,0,pose.v[2]);
       tf::quaternionTFToMsg(quat,quat_msg);
       sample_pose.orientation=quat_msg;
@@ -200,9 +204,15 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           z=self->calculateError(observation[j].getMarkerPoints(),projection);
           for (int i=0;i<4;i++){
               pz=0.0;
-              pz+=exp(-(z[i]*z[i]) / z_hit_denom);
+              //Opción1:Gaussian model
+              pz+=self->z_hit*exp(-(z[i]*z[i]) / z_hit_denom);
+              //Random measurements
+              pz+=self->z_rand*z_rand_mult;
              // cout<<"pz: "<<pz<<endl;
               p+=pz*pz*pz;
+              //Opción 2:Distribución exponencial (Humanoid P12)
+              //pz+=z[i];
+              //p+=self->landa*exp(-self->landa*pz);
           }
 
           //cout<<"despues de mean error"<<endl;

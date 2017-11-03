@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+<arg name="world_file" default="$(find simulation)/world/Pasillo_R.world"/>
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    	<arg name="world_name" value="$(arg world_file)"/>
+     </include>
+	<param name="robot_description" textfile="$(find simulation)/models/Doris/Doris.sdf"/>
+</launch>
