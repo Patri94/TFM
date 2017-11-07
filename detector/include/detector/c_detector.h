@@ -40,7 +40,7 @@ public:
     sensor_msgs::ImagePtr comb_msg;
     geometry_msgs::Pose estimated_pose;
     float brightnessAvg;
-    int minContourPointsAllowed,maxContourPointsAllowed,minContourLengthAllowed,maxContourLengthAllowed;
+    int minContourPointsAllowed,maxContourPointsAllowed,minContourLengthAllowed,maxContourLengthAllowed,min_ID,max_ID;
     std::vector<std::vector<cv::Point> > contours;
     std::vector<Marcador> posiblesMarcas, Marcadores,OptMarkers,map;
     sensor_msgs::ImagePtr ms1, ms2, ms3;

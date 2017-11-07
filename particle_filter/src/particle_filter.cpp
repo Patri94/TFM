@@ -60,6 +60,7 @@ using namespace cv;
         nh1_.getParam("/particle_filter/marker_positions",marker_list);
         nh1_.getParam("/particle_filter/camera_positions",camera_list);
         cout<<"Camaras"<<num_cam<<endl;
+        cout<<"marcadores"<<marker_list.size()<<endl;
         //Reading mapfile
         std::vector<geometry_msgs::Pose> Centros;
         std::vector<int> IDs;
@@ -68,11 +69,15 @@ using namespace cv;
                 tf::Quaternion Quat;
                 geometry_msgs::Pose temp_pose;
                 temp_pose.position.x=marker_list[i]["x"];
+                cout<<"x:"<<temp_pose.position.x<<endl;
                 temp_pose.position.y=marker_list[i]["y"];
+                cout<<"y:"<<temp_pose.position.y<<endl;
                 temp_pose.position.z=marker_list[i]["z"];
+                cout<<"z:"<<temp_pose.position.z<<endl;
                 double roll =marker_list[i]["roll"];
                 double pitch =marker_list[i]["pitch"];
                 double yaw =marker_list[i]["yaw"];
+                cout<<"pose"<<endl;
                 orientation.setRPY (float(roll),float(pitch),float(yaw));
                 orientation.getRotation(Quat);
                 temp_pose.orientation.x = double(Quat.x());
@@ -81,6 +86,7 @@ using namespace cv;
                 temp_pose.orientation.w = double(Quat.w());
                 Centros.push_back(temp_pose);
                 IDs.push_back(marker_list[i]["ID"]);
+                cout<<"he terminado uno"<<endl;
 
             }
         //Reading camerafile
@@ -179,25 +185,25 @@ void ParticleFilter::LoadMap(std::vector<int>IDs,std::vector<geometry_msgs::Pose
             Marcador Marker;
             geometry_msgs::Pose marker_pose=Centros[i];
             geometry_msgs::TransformStamped tf_marker;
-            tf_marker.header.frame_id="ground_plane__link";
+            tf_marker.header.frame_id="map";
             tf_marker.child_frame_id="Marca"+std::to_string(i);
             tf_marker.transform.translation.x=marker_pose.position.x;
             tf_marker.transform.translation.y=marker_pose.position.y;
             tf_marker.transform.translation.z=marker_pose.position.z;
             tf_marker.transform.rotation=marker_pose.orientation;
 
-            //0=topleftcorner
+            //0=toprightcorner
             for (int i=0;i<4;i++){
                     geometry_msgs::PointStamped relative_corner;
                     relative_corner.point.x=marker_width/2;
                     relative_corner.point.y=marker_height/2;
                     relative_corner.point.z=0;
 
-                    if(i==1 or i==2){
+                    if(i==0 or i==1){
                             cout<<"entro1"<<endl;
                             relative_corner.point.x=-marker_width/2;
                         }
-                    if(i==0 or i==1){
+                    if(i==0 or i==3){
                             cout<<"entro2"<<endl;
                             relative_corner.point.y=-marker_height/2;
                         }
@@ -302,7 +308,7 @@ std::vector<geometry_msgs::Point> ParticleFilter::ObservationModel (Marcador Mar
     tf::Quaternion RotCam;
     //From Robot base to camera
     RotCam.setRPY(-M_PI/2,0,-M_PI/2);//Pich de M_PI/2
-    RobTCam.setOrigin(tf::Vector3(0,0,1.4));
+    RobTCam.setOrigin(tf::Vector3(0,0,1.3925));
     RobTCam.setRotation(RotCam);
     tf::Quaternion QMundRCam (CamaraMundo.orientation.x,CamaraMundo.orientation.y,CamaraMundo.orientation.z,CamaraMundo.orientation.w);
     tf::Vector3 Trasl1 (CamaraMundo.position.x,CamaraMundo.position.y,CamaraMundo.position.z);
@@ -350,14 +356,14 @@ void ParticleFilter::ErrorCalc(){
     if(!(imagen_filter.empty())){
             for (int j=0;j<this->map.size();j++){
     geometry_msgs::Pose Supuesta;
-    Supuesta.position.x=1;
-    Supuesta.position.y=4;
-    Supuesta.position.z=0;
+    Supuesta.position.x=23.212226;
+    Supuesta.position.y=3.826968;
+    Supuesta.position.z=0.0;
     EstimatedPose.position.z=0.0;
     tf::Quaternion Quat;
     tf::Matrix3x3 Mat;
     geometry_msgs::Quaternion QuatMs;
-    Mat.setRPY(0,0,1.57);
+    Mat.setRPY(0,0,-0.007302);
     Mat.getRotation(Quat);
     tf::quaternionTFToMsg (Quat,QuatMs);
     Supuesta.orientation=QuatMs;

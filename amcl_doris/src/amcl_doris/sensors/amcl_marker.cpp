@@ -202,6 +202,7 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           //waitKey();
           //Compute probability for every corner
           z=self->calculateError(observation[j].getMarkerPoints(),projection);
+
           for (int i=0;i<4;i++){
               pz=0.0;
               //Opción1:Gaussian model
@@ -261,7 +262,10 @@ std::vector<float> AMCLMarker::calculateError(std::vector<cv::Point2f> projectio
         //cout<<"errory:"<<errory<<endl;
         error+=sqrt((errorx*errorx)+(errory*errory));
         errorv.push_back(error);
-        //cout<<"error"<<error<<endl;
+        cout<<"error"<<error<<endl;
+        if(error>sqrt(2)){
+            waitKey();
+        }
     }
     //cout<<"error"<<error<<endl;
     return errorv;
@@ -354,7 +358,7 @@ std::vector<geometry_msgs::Point> AMCLMarker::CalculateRelativePose (Marcador Ma
     tf::Quaternion RotCam;
     //From Robot base to camera
     RotCam.setRPY(-M_PI/2,0,-M_PI/2);//Pich de M_PI/2
-    RobTCam.setOrigin(tf::Vector3(0,0,1.4));
+    RobTCam.setOrigin(tf::Vector3(0,0,1.3925));
     RobTCam.setRotation(RotCam);
     tf::Quaternion QMundRCam (CamaraMundo.orientation.x,CamaraMundo.orientation.y,CamaraMundo.orientation.z,CamaraMundo.orientation.w);
     tf::Vector3 Trasl1 (CamaraMundo.position.x,CamaraMundo.position.y,CamaraMundo.position.z);

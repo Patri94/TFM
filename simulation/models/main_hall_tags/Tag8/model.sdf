@@ -7,7 +7,7 @@
       <collision name="collision">
         <geometry>
           <box>
-            <size>0.3777 0.001 0.545985</size>
+            <size>0.215 0.001 0.345</size>
           </box>
         </geometry>
       </collision>
@@ -15,14 +15,14 @@
         <cast_shadows>false</cast_shadows>
         <geometry>
           <box>
-            <size>0.3777 0.001 0.545985</size>
+            <size>0.215 0.001 0.345</size>
           </box>
         </geometry>
         <material>
           <script>
             <uri>model://main_hall_tags/Tag8/materials/scripts</uri>
 	    <uri>model://main_hall_tags/Tag8/materials/textures</uri>
-	    <name>vrc/Tag0</name>
+	    <name>vrc/Tag8</name>
           </script>
         </material>
       </visual>

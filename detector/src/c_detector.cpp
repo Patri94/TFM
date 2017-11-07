@@ -50,6 +50,10 @@ cDetector::cDetector ( const ros::NodeHandle& nh,const ros::NodeHandle& nh_priva
     float  image_width, marker_height, marker_width, num_cam;
     //XmlRpc::XmlRpcValue marker_list;
      nh_.getParam("/detector/IMAGE_WIDTH",image_width);
+     nh_.getParam("/DetectorNode/min_ID",min_ID);
+     nh_.getParam("/DetectorNode/max_ID",max_ID);
+     //cout<<min_ID<<endl;
+     //cout<<max_ID<<endl;
     //cout<<marker_list.size()<<endl;
     //Initialize subscribers for cameras
     sub_cam1=nh_.subscribe<sensor_msgs::Image> ("Doris/cam1/image_raw",1,&cDetector::infoCallback,this);
@@ -277,11 +281,27 @@ void cDetector::findCandidates(void){
                             }
                             cv::Point2f v1 = marker.getPoint(1) - marker.getPoint(0);
                             cv::Point2f v2 = marker.getPoint(2) - marker.getPoint(0);
-                            double o = (v1.x * v2.y) - (v1.y * v2.x);
-                            if (o < 0.0){
+                            cv::Point2f v3 = marker.getPoint(3) - marker.getPoint(0);
+                            double z1 = (v1.x * v2.y) - (v1.y * v2.x);
+                                    if (z1 < 0.0){
                                     cv::Point2f auxPoint = marker.getPoint(1);
                                     marker.setPoint(marker.getPoint(3), 1);
                                     marker.setPoint(auxPoint, 3);
+                            }
+                            //Order Points ( 0 -> top left corner)
+                            if (marker.getPoint(1).y < marker.getPoint(3).y){
+                                /*for (int i=0;i<4;i++){
+                                    cout<<"x:"<< marker.getPoint(i).x<<" y:"<<marker.getPoint(i).y<<endl;
+                                }*/
+                                cv::Point2f auxPoint =marker.getPoint(0);
+                                for (int i=1;i<4;i++){
+                                    marker.setPoint(marker.getPoint(i),i-1);
+                                }
+                                marker.setPoint(auxPoint,3);
+                               /*for (int i=0;i<4;i++){
+                                   cout<<"x:"<< marker.getPoint(i).x<<" y:"<<marker.getPoint(i).y<<endl;
+                               }
+                               waitKey();*/
                             }
                             marker.setContourIdx(i);
                             marker.setRotatedRect(cv::minAreaRect(aprox));
@@ -331,7 +351,7 @@ void cDetector::findCandidates(void){
                                             Marcadores.push_back(posiblesMarcas[i]);
                             }
                            //Dibujar candidatos
-                            imshow("Detection",this->comb);
+                           /* imshow("Detection",this->comb);
                             waitKey(30);
                             for (int i=0; i< Marcadores.size();i++){
                                     vector<Point2f> puntos = Marcadores[i].getAllPoints();
@@ -343,7 +363,7 @@ void cDetector::findCandidates(void){
                                 }
                             //cout<<comb.size()<<endl;
                             imshow("Detection",this->comb);
-                            waitKey(30);
+                            waitKey(30);*/
                     }
 }
 cv::Mat cDetector::rotate(cv::Mat input)
@@ -430,7 +450,6 @@ int cDetector::MarkerDecoder(const cv::Mat& inputGrayscale, int& nRrotations, Ma
                                 convert<<markerId;
                                 etiqueta=convert.str();
                                 putText(this->comb, etiqueta, marker.getPoint(0),CV_FONT_HERSHEY_COMPLEX,0.8,Scalar(0,0,255));
-                                imshow("DetectionEti",this->comb);
 
                             } else {
                                 result = -1;
@@ -466,6 +485,9 @@ void cDetector::recognizeMarkers(){
                 line (this->comb,puntos[2], puntos[3],Scalar(0,255,0),4);
                 line (this->comb,puntos[3], puntos[0],Scalar(0,255,0),4);
             }
+        imshow("DetectionEti",this->comb);
+        waitKey(30);
+
         this->comb_msg=cv_bridge::CvImage(std_msgs::Header(),"bgr8",this->comb).toImageMsg();
 
 }
@@ -562,21 +584,22 @@ std::vector<Marcador> cDetector::orderDetection(std::vector<Marcador> detection)
     Marcador temp;
     for (int i=0; i<detection.size();i++){
 
-        if(detection[i].getMarkerID()<17 || detection[i].getMarkerID()>22){
-            //cout<<"tengo que quitar"<<endl;
+        if(detection[i].getMarkerID()<min_ID || detection[i].getMarkerID()>max_ID){
+            cout<<"tengo que quitar "<<detection[i].getMarkerID()<<endl;
             for(int k=i;k<detection.size()-1;k++){
                 detection[k]=detection[k+1];
             }
             detection.resize(detection.size()-1);
 
         }
-
+        if (detection.size()>=2){
         for (int j=0; j<detection.size()-1;j++){
             if (detection[j].getMarkerID()>detection[j+1].getMarkerID()){
                 temp=detection[j+1];
                 detection[j+1]=detection[j];
                 detection[j]=temp;
             }
+        }
         }
     }
     return detection;

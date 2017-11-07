@@ -288,6 +288,7 @@ class AmclNode
     Mat imagen_filter;
     std::vector<Marcador> marker_map;
     std::vector<geometry_msgs::TransformStamped> tf_cameras;
+    std::string frame_to_camera_;
     //Functions
     void LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros);
     void loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras);
@@ -1216,7 +1217,7 @@ AmclNode::setMapCallback(nav_msgs::SetMap::Request& req,
   return true;
 }
 
-/*void
+void
 AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
 {
   last_laser_received_ts_ = ros::Time::now();
@@ -1485,7 +1486,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
          puts("");
        */
 
-   /*   geometry_msgs::PoseWithCovarianceStamped p;
+      geometry_msgs::PoseWithCovarianceStamped p;
       // Fill in the header
       p.header.frame_id = global_frame_id_;
       p.header.stamp = laser_scan->header.stamp;
@@ -1521,7 +1522,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
          }
        */
 
-    /*  pose_pub_.publish(p);
+      pose_pub_.publish(p);
       last_published_pose = p;
 
       ROS_DEBUG("New pose: %6.3f %6.3f %6.3f",
@@ -1596,7 +1597,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     }
   }
 
-}*/
+}
 
 double
 AmclNode::getYaw(tf::Pose& t)
@@ -1741,11 +1742,11 @@ void AmclNode::LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pos
                     relative_corner.point.y=marker_height/2;
                     relative_corner.point.z=0;
 
-                    if(i==1 or i==2){
+                    if(i==0 or i==1){
 
                             relative_corner.point.x=-marker_width/2;
                         }
-                    if(i==0 or i==1){
+                    if(i==0 or i==3){
 
                             relative_corner.point.y=-marker_height/2;
                         }
@@ -1833,11 +1834,13 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
     //cout<<"tf_broadcast"<<tf_broadcast_<<endl;
     //cout<<"base_frame_id"<<base_frame_id_<<endl;
     //cout<<"odom frame"<<odom_frame_id_<<endl;
-    if(!(observation.empty())){
-        marker_update=false;
-    //Pose of robot when info was taken
+    if(frame_to_camera_!=msg->header.frame_id){
+        marker_=new AMCLMarker(*marker_);
+        marker_update=true;
+        frame_to_camera_=msg->header.frame_id;
+    }
         pf_vector_t pose;
-        pf_vector_t delta = pf_vector_zero();
+
 
         //bool force_publication = false;
        // cout<<"odom"<<getOdomPose(latest_odom_pose_, pose.v[0], pose.v[1], pose.v[2],
@@ -1848,7 +1851,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
             ROS_ERROR("Couldn't determine robot's pose associated with camera info");
             return;
           }
-
+        pf_vector_t delta = pf_vector_zero();
         if(pf_init_)
           {
             cout<<"in pf_init"<<endl;
@@ -1872,7 +1875,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
                 cout<<"entra en update"<<endl;
               marker_update=true;
             }
-            waitKey();
+            //waitKey();
 
           }
           bool force_publication=false;
@@ -1907,7 +1910,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
           if(marker_update){
 
             cout<<"actualizar markers"<<endl;
-            waitKey();
+            //waitKey();
             AMCLMarkerData mdata;
             mdata.sensor=this->marker_;
             mdata.markers_obs=observation;
@@ -1918,7 +1921,9 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
             //cout<<global_frame_id_<<endl;
             //cout<<odom_frame_id_<<endl;
             //Update filter with marker data
+            if(!observation.empty()){
             marker_->UpdateSensor(pf_,(AMCLSensorData*) &mdata);
+            }
             marker_update=false;
             //cout<<"numcam"<<num_cam<<endl;
             //cout<<"image_width"<<image_width<<endl;
@@ -2095,5 +2100,5 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
 
 }
 
-}
+
 

@@ -2,8 +2,8 @@
   <param name="use_sim_time" value="true" />
   <node pkg="amcl" type="amcl" name="amcl" output="screen" >
     <param name="scan" value="Doris/scan" />
-    <param name="odom_frame" value="Doris/odom"/>
-    <param name="base_link" value="Doris/cuerpo"/>
+    <param name="_odom_frame" value="Doris/odom"/>
+    <param name="_base_link" value="Doris/cuerpo"/>
     <remap from ="scan" to="Doris/scan"/>
     <remap from="odom" to="Doris/odom" />
     <remap from="base_link" to="Doris/cuerpo" />
