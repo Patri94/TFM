@@ -22,11 +22,21 @@ find_package(catkin REQUIRED
             geometry_msgs
             image_geometry
             tf2
+            message_generation
         )
 
 find_package(Boost REQUIRED)
 find_package (OpenCV REQUIRED)
 find_package (detector REQUIRED)
+add_message_files(
+	FILES
+	pose_error.msg
+)
+generate_messages(
+	DEPENDENCIES
+	std_msgs
+)
+
 # dynamic reconfigure
 generate_dynamic_reconfigure_options(
     cfg/AMCL.cfg
@@ -39,7 +49,7 @@ catkin_package(
         dynamic_reconfigure
         tf
 	tf2
-  CATKIN_DEPENDS nav_msgs std_srvs
+  CATKIN_DEPENDS nav_msgs std_srvs message_runtime
   INCLUDE_DIRS include
   LIBRARIES amcl_sensors amcl_map amcl_pf
   DEPENDS OpenCV detector
@@ -90,8 +100,9 @@ install( TARGETS
     RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
-install(DIRECTORY include/amcl/
+install(DIRECTORY include/amcl_doris/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
 )
 
 install(DIRECTORY examples/

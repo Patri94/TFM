@@ -56,6 +56,10 @@
 #include <visualization_msgs/Marker.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <nav_msgs/Odometry.h>
+#include <std_msgs/Float64MultiArray.h>
+#include <amcl_doris/pose_error.h>
+
 
 // For transform support
 #include "tf/transform_broadcaster.h"
@@ -280,9 +284,9 @@ class AmclNode
     //For Camera PF
     bool marker_update;
     geometry_msgs::Pose EstimatedPose,Cam1,Cam2,Cam3;
-    ros::Publisher publicar,publicar_cam1,publicar_cam2,publicar_cam3,publicar_mapa;
-    ros::Subscriber detector_subs, corners_subs;
-    float  marker_width, num_cam,marker_height,image_width;
+    ros::Publisher publicar,publicar_cam1,publicar_cam2,publicar_cam3,publicar_mapa,error_pub;
+    ros::Subscriber detector_subs, corners_subs,ground_truth_subs;
+    float  marker_width, num_cam,marker_height,image_width,ground_truth_x_,ground_truth_y_,ground_truth_yaw_;
     visualization_msgs::Marker pub_map;
     tf::TransformBroadcaster br_marker;
     Mat imagen_filter;
@@ -294,6 +298,7 @@ class AmclNode
     void loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras);
     void imageCallback(const sensor_msgs::ImageConstPtr& msg);
     void detectionCallback (const detector::messagedet::ConstPtr &msg);
+    void groundTruthCallback (const nav_msgs::Odometry::ConstPtr& msg);
     std::vector<geometry_msgs::Point> CalculateRelativePose (Marcador Marca, geometry_msgs::Pose CamaraMundo);
     //Prob related parameters
     double marker_z_hit,marker_z_rand,marker_sigma_hit,marker_landa;
@@ -470,12 +475,12 @@ AmclNode::AmclNode() :
 
   set_map_srv_= nh_.advertiseService("set_map", &AmclNode::setMapCallback, this);
 
-  laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
-  laser_scan_filter_ =
-          new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_,
-                                                        *tf_, 
+  //laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
+ // laser_scan_filter_ =
+         // new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_,
+                                                    /*    *tf_,
                                                         odom_frame_id_, 
-                                                        100);
+                                                        100);*/
 
 
   if(use_map_topic_) {
@@ -582,9 +587,11 @@ AmclNode::AmclNode() :
   marker_detection_filter_=new tf::MessageFilter<detector::messagedet>(*marker_detection_sub_,*tf_,odom_frame_id_,100);
   marker_detection_filter_->registerCallback(boost::bind(&AmclNode::detectionCallback,
                                                   this, _1));
+  ground_truth_subs=nh_.subscribe("/Doris/ground_truth/state",1, &AmclNode::groundTruthCallback,this);
   m_force_update = false;
   //this->corners_subs=private_nh_.subscribe<detector::messagedet>("/DetectorNode/detection",1,&AmclNode::detectionCallback,this);
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
+  error_pub=nh_.advertise<amcl_doris::pose_error>("amcl_error",1);
 //cout<<"11"<<endl;
   dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
   dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
@@ -1217,7 +1224,7 @@ AmclNode::setMapCallback(nav_msgs::SetMap::Request& req,
   return true;
 }
 
-void
+/*void
 AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
 {
   last_laser_received_ts_ = ros::Time::now();
@@ -1486,7 +1493,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
          puts("");
        */
 
-      geometry_msgs::PoseWithCovarianceStamped p;
+     /* geometry_msgs::PoseWithCovarianceStamped p;
       // Fill in the header
       p.header.frame_id = global_frame_id_;
       p.header.stamp = laser_scan->header.stamp;
@@ -1522,7 +1529,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
          }
        */
 
-      pose_pub_.publish(p);
+     /* pose_pub_.publish(p);
       last_published_pose = p;
 
       ROS_DEBUG("New pose: %6.3f %6.3f %6.3f",
@@ -1597,7 +1604,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     }
   }
 
-}
+}*/
 
 double
 AmclNode::getYaw(tf::Pose& t)
@@ -2019,6 +2026,19 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
               //cout<<"publicacion de la pose"<<endl;
               pose_pub_.publish(p);
 
+              //Publishing error with gazebo's ground_truth
+              amcl_doris::pose_error p_error;
+
+              float error_x=p.pose.pose.position.x-ground_truth_x_;
+              float error_y=p.pose.pose.position.y-ground_truth_y_;
+
+              p_error.vec_error.data.push_back(p.pose.pose.position.x-ground_truth_x_);
+              p_error.vec_error.data.push_back(p.pose.pose.position.y-ground_truth_y_);
+              p_error.vec_error.data.push_back(sqrt((error_x*error_x)+(error_y*error_y)));
+              p_error.vec_error.data.push_back(marker_hyps[max_weight_hyp].pf_pose_mean.v[2]-ground_truth_yaw_);
+
+              p_error.header.stamp=ros::Time::now();
+              error_pub.publish(p_error);
               last_published_pose = p;
 
              // ROS_DEBUG("New pose: %6.3f %6.3f %6.3f",
@@ -2100,5 +2120,11 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
 
 }
 
-
+void AmclNode::groundTruthCallback (const nav_msgs::Odometry::ConstPtr& msg){
+    ground_truth_x_=msg->pose.pose.position.x;
+    ground_truth_y_=msg->pose.pose.position.y;
+    tf::Pose pose;
+    tf::poseMsgToTF(msg->pose.pose,pose);
+    ground_truth_yaw_=tf::getYaw(pose.getRotation());
+}
 
