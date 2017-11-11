@@ -57,6 +57,7 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <amcl_doris/pose_error.h>
 
@@ -284,7 +285,7 @@ class AmclNode
     //For Camera PF
     bool marker_update;
     geometry_msgs::Pose EstimatedPose,Cam1,Cam2,Cam3;
-    ros::Publisher publicar,publicar_cam1,publicar_cam2,publicar_cam3,publicar_mapa,error_pub;
+    ros::Publisher publicar,publicar_cam1,publicar_cam2,publicar_cam3,publicar_mapa,error_pub,path_pub_r,path_pub_out;
     ros::Subscriber detector_subs, corners_subs,ground_truth_subs;
     float  marker_width, num_cam,marker_height,image_width,ground_truth_x_,ground_truth_y_,ground_truth_yaw_;
     visualization_msgs::Marker pub_map;
@@ -304,6 +305,8 @@ class AmclNode
     double marker_z_hit,marker_z_rand,marker_sigma_hit,marker_landa;
     message_filters::Subscriber<detector::messagedet>* marker_detection_sub_;
     tf::MessageFilter<detector::messagedet>* marker_detection_filter_;
+    nav_msgs::Path reference, output;
+    geometry_msgs::Pose ground_truth;
 
 
 
@@ -592,6 +595,8 @@ AmclNode::AmclNode() :
   //this->corners_subs=private_nh_.subscribe<detector::messagedet>("/DetectorNode/detection",1,&AmclNode::detectionCallback,this);
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
   error_pub=nh_.advertise<amcl_doris::pose_error>("amcl_error",1);
+  path_pub_r=nh_.advertise<nav_msgs::Path>("reference_path",1);
+  path_pub_out=nh_.advertise<nav_msgs::Path>("output_path",1);
 //cout<<"11"<<endl;
   dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
   dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
@@ -2038,6 +2043,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
               p_error.vec_error.data.push_back(marker_hyps[max_weight_hyp].pf_pose_mean.v[2]-ground_truth_yaw_);
 
               p_error.header.stamp=ros::Time::now();
+              cout<<"aqui1"<<endl;
               error_pub.publish(p_error);
               last_published_pose = p;
 
@@ -2117,10 +2123,22 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
       save_pose_last_time = now;
     }
   }
+  geometry_msgs::PoseStamped pose_g,pose_o;
+  pose_g.pose=ground_truth;
+  pose_g.header.stamp=ros::Time::now();
+  reference.poses.push_back(pose_g);
+  pose_o.pose=last_published_pose.pose.pose;
+  pose_o.header.stamp=ros::Time::now();
+  output.poses.push_back(pose_o);
+  reference.header.frame_id="map";
+  output.header.frame_id="map";
+  path_pub_r.publish(reference);
+  path_pub_out.publish(output);
 
 }
 
 void AmclNode::groundTruthCallback (const nav_msgs::Odometry::ConstPtr& msg){
+    ground_truth=msg->pose.pose;
     ground_truth_x_=msg->pose.pose.position.x;
     ground_truth_y_=msg->pose.pose.position.y;
     tf::Pose pose;
