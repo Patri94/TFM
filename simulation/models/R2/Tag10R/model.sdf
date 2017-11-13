@@ -1,0 +1,31 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <model name="Tag10R">
+    <static>true</static>
+    <link name="link">
+      <pose>0 0 0 0 0 0</pose>
+      <collision name="collision">
+        <geometry>
+          <box>
+            <size>0.215 0.001 0.345</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="visual">
+        <cast_shadows>false</cast_shadows>
+        <geometry>
+          <box>
+            <size>0.215 0.001 0.345</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>model://R2/Tag10R/materials/scripts</uri>
+	    <uri>model://R2/Tag10R/materials/textures</uri>
+	    <name>vrc/Tag10</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

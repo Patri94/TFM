@@ -52,6 +52,10 @@ cDetector::cDetector ( const ros::NodeHandle& nh,const ros::NodeHandle& nh_priva
      nh_.getParam("/detector/IMAGE_WIDTH",image_width);
      nh_.getParam("/DetectorNode/min_ID",min_ID);
      nh_.getParam("/DetectorNode/max_ID",max_ID);
+     nh_.getParam("/DetectorNode/min_sector",min_sector);
+     nh_.getParam("/DetectorNode/max_sector",max_sector);
+     nh_.getParam("/DetectorNode/min_map",min_map);
+     nh_.getParam("/DetectorNode/max_map",max_map);
      //cout<<min_ID<<endl;
      //cout<<max_ID<<endl;
     //cout<<marker_list.size()<<endl;
@@ -507,6 +511,8 @@ void cDetector::createMessage(void){
                         detected.Corners.push_back(corner);
                     }
                 detected.ID.data=uint8_t(this->OptMarkers[i].getMarkerID());
+                detected.map.data=uint8_t(this->OptMarkers[i].getMapID());
+                detected.sector.data=uint8_t(this->OptMarkers[i].getSectorID());
                 msg_det.DetectedMarkers.push_back(detected);
       }
         //cout<<"detectados"<<msg_det.DetectedMarkers.size()<<endl;
@@ -584,7 +590,7 @@ std::vector<Marcador> cDetector::orderDetection(std::vector<Marcador> detection)
     Marcador temp;
     for (int i=0; i<detection.size();i++){
 
-        if(detection[i].getMarkerID()<min_ID || detection[i].getMarkerID()>max_ID){
+        if(detection[i].getMarkerID()<min_ID || detection[i].getMarkerID()>max_ID || detection[i].getSectorID()<min_sector || detection[i].getSectorID()>max_sector || detection[i].getMapID()<min_map || detection[i].getMapID()>max_map){
             cout<<"tengo que quitar "<<detection[i].getMarkerID()<<endl;
             for(int k=i;k<detection.size()-1;k++){
                 detection[k]=detection[k+1];
@@ -593,13 +599,40 @@ std::vector<Marcador> cDetector::orderDetection(std::vector<Marcador> detection)
 
         }
         if (detection.size()>=2){
+        //First map
+        for (int k=0; k<detection.size()-1;k++){
+            if (detection[k].getMapID()>detection[k+1].getMapID()){
+                temp=detection[k+1];
+                detection[k+1]=detection[k];
+                detection[k]=temp;
+            }
+
+        }
+
+        //Inside map order by sector
+        for (int k=0; k<detection.size()-1;k++){
+            if (detection[k].getMapID() == detection[k+1].getMapID()){
+            if (detection[k].getSectorID()>detection[k+1].getSectorID()){
+                temp=detection[k+1];
+                detection[k+1]=detection[k];
+                detection[k]=temp;
+            }
+            }
+
+        }
+
+        //Inside sector order by marker ID
         for (int j=0; j<detection.size()-1;j++){
+            if (detection[j].getMapID() == detection[j+1].getMapID()){
+            if (detection[j].getSectorID() == detection[j+1].getSectorID()){
             if (detection[j].getMarkerID()>detection[j+1].getMarkerID()){
                 temp=detection[j+1];
                 detection[j+1]=detection[j];
                 detection[j]=temp;
             }
         }
+        }
+    }
         }
     }
     return detection;

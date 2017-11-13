@@ -8,6 +8,10 @@
 	<param name="IMAGE_WIDTH" value= "1812" />
 	<param name="min_ID" value="0"/>
 	<param name="max_ID" value="10"/>
+	<param name="min_sector" value="1"/>
+	<param name="max_sector" value="5"/>
+	<param name="min_map" value="11"/>
+	<param name="max_map" value="11"/>
 	</node>
 	
         

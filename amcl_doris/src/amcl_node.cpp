@@ -295,7 +295,7 @@ class AmclNode
     std::vector<geometry_msgs::TransformStamped> tf_cameras;
     std::string frame_to_camera_;
     //Functions
-    void LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros);
+    void LoadMapMarkers(std::vector<int>maps,std::vector<int>sectors,std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros);
     void loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras);
     void imageCallback(const sensor_msgs::ImageConstPtr& msg);
     void detectionCallback (const detector::messagedet::ConstPtr &msg);
@@ -522,7 +522,7 @@ AmclNode::AmclNode() :
   cout<<"marker_landa"<<marker_landa<<endl;
   //Reading mapfile
   std::vector<geometry_msgs::Pose> Centros;
-  std::vector<int> IDs;
+  std::vector<int> IDs,sectors,maps;
   for(int i=0;i<marker_list.size();i++){
           tf::Matrix3x3 orientation;
           tf::Quaternion Quat;
@@ -541,6 +541,8 @@ AmclNode::AmclNode() :
           temp_pose.orientation.w = double(Quat.w());
           Centros.push_back(temp_pose);
           IDs.push_back(marker_list[i]["ID"]);
+          sectors.push_back(marker_list[i]["sector"]);
+          maps.push_back(marker_list[i]["map"]);
 
       }
   //cout<<"centros"<<Centros.size()<<endl;
@@ -576,7 +578,7 @@ AmclNode::AmclNode() :
   waitKey();*/
   //cout<<"cam"<<cameras.size()<<endl;
   this->loadTFCameras(cameras);
-  this->LoadMapMarkers(IDs,Centros);
+  this->LoadMapMarkers(maps,sectors,IDs,Centros);
 
 
   //this->publicar= private_nh_.advertise<visualization_msgs::Marker> ("marker_pose",1);
@@ -1723,7 +1725,7 @@ AmclNode::applyInitialPose()
   }
 }
 
-void AmclNode::LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros){
+void AmclNode::LoadMapMarkers(std::vector<int>maps,std::vector<int>sectors,std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros){
 
     this->pub_map.header.frame_id="ground_plane__link";
     this->pub_map.pose.orientation.w= 1.0;
@@ -1770,6 +1772,8 @@ void AmclNode::LoadMapMarkers(std::vector<int>IDs,std::vector<geometry_msgs::Pos
                 }
             //cout<<IDs[i]<<endl;
             Marker.setMarkerId(IDs[i]);
+            Marker.setSectorId(sectors[i]);
+            Marker.setMapId(maps[i]);
             this->marker_map.push_back(Marker);
 
 
@@ -1830,6 +1834,8 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
     for(int i=0;i<msg->DetectedMarkers.size();i++){
         Marcador marker;
         std::vector<cv::Point2f> corners;
+        marker.setMapId(int(msg->DetectedMarkers[i].map.data));
+        marker.setSectorId(int(msg->DetectedMarkers[i].sector.data));
         marker.setMarkerId(int(msg->DetectedMarkers[i].ID.data));
         for (int j=0;j<4;j++){
             cv::Point2f corner;
