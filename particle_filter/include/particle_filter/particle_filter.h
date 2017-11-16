@@ -52,7 +52,7 @@ using namespace tf;
 
         //Functions
         void LoadCameraInfo(void);
-        void LoadMap(std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros);
+        void LoadMap(std::vector<int>maps,std::vector<int>sectors,std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros);
         void loadTFCameras(std::vector<geometry_msgs::Pose> pose_cameras);
         std::vector<geometry_msgs::Point> ObservationModel (Marcador Marca, geometry_msgs::Pose CamaraMundo);
         void ErrorCalc();

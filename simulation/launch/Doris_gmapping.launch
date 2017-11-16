@@ -5,6 +5,5 @@
     <param name="odom_frame" value="Doris/odom"/>
     <param name="base_frame" value="Doris/cuerpo"/>
     <remap from="odom" to="Doris/odom" />
-    <remap from="base_link" to="Doris/cuerpo"/>
   </node>
 </launch>

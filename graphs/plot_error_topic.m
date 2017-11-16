@@ -15,7 +15,7 @@ yaw_error(:,1)=yaw_error(:,1)/1000000000;
 
 %Plotting 
 subplot(1,2,1);
-plot(XYError(:,1),XYError(:,2));
+plot(XYError(2:end,1),XYError(2:end,2));
 title('Absolute Error');
 xlabel('time(seconds)');
 ylabel('Error(meters)');

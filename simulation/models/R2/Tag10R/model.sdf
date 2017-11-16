@@ -22,7 +22,7 @@
           <script>
             <uri>model://R2/Tag10R/materials/scripts</uri>
 	    <uri>model://R2/Tag10R/materials/textures</uri>
-	    <name>vrc/Tag10</name>
+	    <name>vrc/Tag10R</name>
           </script>
         </material>
       </visual>

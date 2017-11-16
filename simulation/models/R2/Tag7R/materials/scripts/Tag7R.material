@@ -1,0 +1,17 @@
+material vrc/Tag7R
+{
+	receive_shadows off
+	technique
+	{
+		pass
+		{
+			texture_unit
+			{
+				texture Marker-07R.png
+				filtering anistropic
+				max_anisotropy 16
+                                scale 1 1
+			}
+		}
+	}
+}

@@ -22,7 +22,7 @@
           <script>
             <uri>model://R2/Tag9R/materials/scripts</uri>
 	    <uri>model://R2/Tag9R/materials/textures</uri>
-	    <name>vrc/Tag9</name>
+	    <name>vrc/Tag9R</name>
           </script>
         </material>
       </visual>

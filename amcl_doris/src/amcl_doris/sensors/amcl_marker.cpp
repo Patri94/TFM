@@ -119,31 +119,33 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
   int i;
   std::vector<Marcador> detected_from_map;
   float gaussian_norm=1/(sqrt(2*M_PI*self->sigma_hit*self->sigma_hit));
-  cout<<self->map.size()<<endl;
-  cout<<observation.size()<<endl;
+  //cout<<self->map.size()<<endl;
+  //cout<<observation.size()<<endl;
   //Extract only detected markers from map
   for(int k=0;k<observation.size();k++){
         for (int j=0; j<self->map.size();j++){
-            cout<<"map"<<self->map[j].getMapID()<<endl;
+           /* cout<<"map"<<self->map[j].getMapID()<<endl;
             cout<<"sector"<<self->map[j].getSectorID()<<endl;
             cout<<"ID"<<self->map[j].getMarkerID()<<endl;
             cout<<"map"<<observation[k].getMapID()<<endl;
             cout<<"sector"<<observation[k].getSectorID()<<endl;
-            cout<<"ID"<<observation[k].getMarkerID()<<endl;
+            cout<<"ID"<<observation[k].getMarkerID()<<endl;*/
 
             waitKey();
             if(self->map[j].getMarkerID()==observation[k].getMarkerID() && self->map[j].getSectorID()==observation[k].getSectorID() && self->map[j].getMapID()==observation[k].getMapID()){
-                cout<<"+1"<<endl;
+                //cout<<"+1"<<endl;
                 waitKey();
                 detected_from_map.push_back(self->map[j]);
             }
 
         }
   }
-  cout<<"in map"<<detected_from_map.size()<<endl;
-  /*for (int i=0;i<observation.size();i++){
-      cout<<observation.getMarkerID()<<endl;
-  }*/
+  //cout<<"in map"<<detected_from_map.size()<<endl;
+  for (int i=0;i<observation.size();i++){
+      cout<<"map"<<observation[i].getMapID()<<endl;
+      cout<<"sector"<<observation[i].getSectorID()<<endl;
+      cout<<"ID"<<observation[i].getMarkerID()<<endl;
+  }
   //waitKey();
   //cout<<"map"<<detected_from_map.size()<<endl;
   //cout<<"observed"<<observation.size()<<endl;

@@ -1,4 +1,4 @@
-material vrc/Tag4
+material vrc/Tag4R
 {
 	receive_shadows off
 	technique

@@ -56,8 +56,13 @@ cDetector::cDetector ( const ros::NodeHandle& nh,const ros::NodeHandle& nh_priva
      nh_.getParam("/DetectorNode/max_sector",max_sector);
      nh_.getParam("/DetectorNode/min_map",min_map);
      nh_.getParam("/DetectorNode/max_map",max_map);
-     //cout<<min_ID<<endl;
-     //cout<<max_ID<<endl;
+     cout<<min_map<<endl;
+     cout<<max_map<<endl;
+     cout<<min_sector<<endl;
+     cout<<max_sector<<endl;
+     cout<<min_ID<<endl;
+     cout<<max_ID<<endl;
+     //waitKey();
     //cout<<marker_list.size()<<endl;
     //Initialize subscribers for cameras
     sub_cam1=nh_.subscribe<sensor_msgs::Image> ("Doris/cam1/image_raw",1,&cDetector::infoCallback,this);
@@ -588,16 +593,17 @@ int cDetector::getMapSize(void){
 
 std::vector<Marcador> cDetector::orderDetection(std::vector<Marcador> detection){
     Marcador temp;
+    //cout<<"cuantos"<<detection.size()<<endl;
     for (int i=0; i<detection.size();i++){
-
-        if(detection[i].getMarkerID()<min_ID || detection[i].getMarkerID()>max_ID || detection[i].getSectorID()<min_sector || detection[i].getSectorID()>max_sector || detection[i].getMapID()<min_map || detection[i].getMapID()>max_map){
-            cout<<"tengo que quitar "<<detection[i].getMarkerID()<<endl;
-            for(int k=i;k<detection.size()-1;k++){
-                detection[k]=detection[k+1];
+        cout<<"antes de quitar"<<detection[i].getMarkerID()<<" "<<detection[i].getSectorID()<<" "<<detection[i].getMapID()<<" " << i<<endl;
+        if(detection[i].getMarkerID()<min_ID || detection[i].getMarkerID()>max_ID || detection[i].getSectorID()<min_sector || detection[i].getSectorID()>max_sector || detection[i].getMapID()!=min_map){
+            cout<<"tengo que quitar "<<detection[i].getMarkerID()<<" "<<detection[i].getSectorID()<<" "<<detection[i].getMapID()<<" " << i<<endl;
+            detection.erase(detection.begin()+i);
             }
-            detection.resize(detection.size()-1);
+           // detection.resize(detection.size()-1);
 
-        }
+
+    }
         if (detection.size()>=2){
         //First map
         for (int k=0; k<detection.size()-1;k++){
@@ -610,12 +616,12 @@ std::vector<Marcador> cDetector::orderDetection(std::vector<Marcador> detection)
         }
 
         //Inside map order by sector
-        for (int k=0; k<detection.size()-1;k++){
-            if (detection[k].getMapID() == detection[k+1].getMapID()){
-            if (detection[k].getSectorID()>detection[k+1].getSectorID()){
-                temp=detection[k+1];
-                detection[k+1]=detection[k];
-                detection[k]=temp;
+        for (int m=0; m<detection.size()-1;m++){
+            if (detection[m].getMapID() == detection[m+1].getMapID()){
+            if (detection[m].getSectorID()>detection[m+1].getSectorID()){
+                temp=detection[m+1];
+                detection[m+1]=detection[m];
+                detection[m]=temp;
             }
             }
 
@@ -634,9 +640,10 @@ std::vector<Marcador> cDetector::orderDetection(std::vector<Marcador> detection)
         }
     }
         }
+        return detection;
+
     }
-    return detection;
-}
+
 
 
 

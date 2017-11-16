@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="markers_file_name" default="map_main_hall"/>
+    <arg name="markers_file_name" default="map_R"/>
     <arg name="marker_positions_file" default="$(find amcl_doris)/maps/$(arg markers_file_name).yaml" />
     <arg name="cameras_file_name" default="cameras"/>
     <arg name="cameras_positions_file" default="$(find particle_filter)/maps/$(arg cameras_file_name).yaml" />

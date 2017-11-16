@@ -63,7 +63,7 @@ using namespace cv;
         cout<<"marcadores"<<marker_list.size()<<endl;
         //Reading mapfile
         std::vector<geometry_msgs::Pose> Centros;
-        std::vector<int> IDs;
+        std::vector<int> IDs,maps,sectors;
         for(int i=0;i<marker_list.size();i++){
                 tf::Matrix3x3 orientation;
                 tf::Quaternion Quat;
@@ -86,6 +86,8 @@ using namespace cv;
                 temp_pose.orientation.w = double(Quat.w());
                 Centros.push_back(temp_pose);
                 IDs.push_back(marker_list[i]["ID"]);
+                sectors.push_back(marker_list[i]["sector"]);
+                maps.push_back(marker_list[i]["map"]);
                 cout<<"he terminado uno"<<endl;
 
             }
@@ -119,7 +121,7 @@ using namespace cv;
         odom_subs=nh1_.subscribe<nav_msgs::Odometry> ("Doris/odom",1,&ParticleFilter::odomCallback,this);
 
         this->loadTFCameras(cameras);
-        this->LoadMap(IDs,Centros);
+        this->LoadMap(maps,sectors,IDs,Centros);
         this->LoadCameraInfo();
 
     }
@@ -166,7 +168,7 @@ using namespace cv;
     }
 
 
-void ParticleFilter::LoadMap(std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros){
+void ParticleFilter::LoadMap(std::vector<int>maps,std::vector<int>sectors,std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros){
 
     this->pub_map.header.frame_id="ground_plane__link";
     this->pub_map.pose.orientation.w= 1.0;
@@ -213,6 +215,8 @@ void ParticleFilter::LoadMap(std::vector<int>IDs,std::vector<geometry_msgs::Pose
                     pub_map.points.push_back(global_corner.point);
                 }
             Marker.setMarkerId(IDs[i]);
+            Marker.setSectorId(sectors[i]);
+            Marker.setMapId(maps[i]);
             this->map.push_back(Marker);
 
 
