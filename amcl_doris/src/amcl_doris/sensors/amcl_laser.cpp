@@ -84,12 +84,14 @@ void
 AMCLLaser::SetModelLikelihoodField(double z_hit,
                                    double z_rand,
                                    double sigma_hit,
-                                   double max_occ_dist)
+                                   double max_occ_dist,
+                                   double laser_coeff)
 {
   this->model_type = LASER_MODEL_LIKELIHOOD_FIELD;
   this->z_hit = z_hit;
   this->z_rand = z_rand;
   this->sigma_hit = sigma_hit;
+  this->laser_coeff=laser_coeff;
 
   map_update_cspace(this->map, max_occ_dist);
 }
@@ -203,7 +205,7 @@ double AMCLLaser::BeamModel(AMCLLaserData *data, pf_sample_set_t* set)
       p += pz*pz*pz;
     }
 
-    sample->weight *= p;
+    sample->weight *= self->laser_coeff * p;
     total_weight += sample->weight;
   }
 

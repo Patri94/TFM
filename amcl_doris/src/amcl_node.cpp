@@ -541,7 +541,7 @@ AmclNode::AmclNode() :
   private_nh_.getParam("/amcl_doris/marker_z_rand",marker_z_rand);
   private_nh_.getParam("/amcl_doris/marker_sigma_hit",marker_sigma_hit);
   private_nh_.getParam("/amcl_doris/marker_landa",marker_landa);
-  cout<<"marker_landa"<<marker_landa<<endl;
+  //cout<<"marker_landa"<<marker_landa<<endl;
   //Reading mapfile
   std::vector<geometry_msgs::Pose> Centros;
   std::vector<int> IDs,sectors,maps;
@@ -760,7 +760,7 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   else if(laser_model_type_ == LASER_MODEL_LIKELIHOOD_FIELD){
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
     laser_->SetModelLikelihoodField(z_hit_, z_rand_, sigma_hit_,
-                                    laser_likelihood_max_dist_);
+                                    laser_likelihood_max_dist_, laser_coeff);
     ROS_INFO("Done initializing likelihood field model.");
   }
 
@@ -783,7 +783,7 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   ROS_ASSERT(marker_);
   if (marker_model_type_==MARKER_MODEL_LIKELIHOOD){
       ROS_INFO("Initializing marker filter...");
-      marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit,marker_landa);
+      marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit,marker_landa,marker_coeff);
       //cout<<marker_map.size()<<endl;
       marker_->map=marker_map;
       //cout<<tf_cameras.size()<<endl;
@@ -1075,7 +1075,7 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
   {
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
     laser_->SetModelLikelihoodField(z_hit_, z_rand_, sigma_hit_,
-                                    laser_likelihood_max_dist_);
+                                    laser_likelihood_max_dist_,laser_coeff);
     ROS_INFO("Done initializing likelihood field model.");
   }
   //Markers
@@ -1083,7 +1083,7 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
   marker_=new AMCLMarker();
   ROS_ASSERT(marker_);
   if (marker_model_type_==MARKER_MODEL_LIKELIHOOD){
-      marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit,marker_landa);
+      marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit,marker_landa,marker_coeff);
       marker_->map=marker_map;
       marker_->tf_cameras=tf_cameras;
       marker_->num_cam=num_cam;
@@ -2101,9 +2101,9 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
               p_error.vec_error.data.push_back(p.pose.pose.position.y-ground_truth_y_);
               p_error.vec_error.data.push_back(sqrt((error_x*error_x)+(error_y*error_y)));
               p_error.vec_error.data.push_back(marker_hyps[max_weight_hyp].pf_pose_mean.v[2]-ground_truth_yaw_);
+              p_error.num_markers.data=int(observation.size());
 
               p_error.header.stamp=ros::Time::now();
-              //cout<<"aqui1"<<endl;
               error_pub.publish(p_error);
               last_published_pose = p;
 

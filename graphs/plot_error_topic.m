@@ -2,27 +2,70 @@
 
 %Loading files
 XYError=csvread('error_D.txt');
-yaw_error=csvread('error_Y.txt');
+yaw_error=csvread('error_Yaw.txt');
+markers=csvread('markers.txt');
+ErrorX=csvread('error_X.txt');
+ErrorY=csvread('error_Y.txt');
 
-%%Starting from time 0
+%Starting from time 0
 XYError(:,1)=XYError(:,1)-XYError(1,1);
 yaw_error(:,1)=yaw_error(:,1)-yaw_error(1,1);
+markers(:,1)= markers(:,1)-markers(1,1);
+ErrorX(:,1)=ErrorX(:,1)-ErrorX(1,1);
+ErrorY(:,1)=ErrorY(:,1)-ErrorY(1,1);
 
 %from nsecs to secs
 XYError(:,1)=XYError(:,1)/1000000000;
 yaw_error(:,1)=yaw_error(:,1)/1000000000;
+markers(:,1)=markers(:,1)/1000000000;
+ErrorX(:,1)=ErrorX(:,1)/1000000000;
+ErrorY(:,1)=ErrorY(:,1)/1000000000;
 
+%from radians to degrees
+yaw_error(:,2)=yaw_error(:,2)*(360/(2*pi));
 
-%Plotting 
-subplot(1,2,1);
+%Plotting
+subplot(2,2,1);
 plot(XYError(2:end,1),XYError(2:end,2));
+hold on;
+%plot(markers(2:end,1),markers(2:end,2));
 title('Absolute Error');
 xlabel('time(seconds)');
 ylabel('Error(meters)');
+%legend('Error','Number of markers');
 
-subplot(1,2,2);
-plot(yaw_error(:,1),yaw_error(:,2));
+subplot(2,2,2);
+plot(ErrorX(2:end,1),ErrorX(2:end,2));
+hold on;
+%plot(markers(2:end,1),markers(2:end,2));
+title('Error X');
+xlabel('time(seconds)');
+ylabel('Error(meters)');
+%legend('Error','Number of markers');
+
+subplot(2,2,3);
+plot(ErrorY(2:end,1),ErrorY(2:end,2));
+hold on;
+%plot(markers(2:end,1),markers(2:end,2));
+title('Error Y');
+xlabel('time(seconds)');
+ylabel('Error(meters)');
+%legend('Error','Number of markers');
+
+subplot(2,2,4);
+plot(yaw_error(2:end,1),yaw_error(2:end,2));
+hold on;
+%plot(markers(2:end,1),markers(2:end,2));
 title('Yaw Error');
 xlabel('time(seconds)');
-ylabel('Error(radians)');
+ylabel('Error(degrees)');
+%legend('Error','Number of markers');
+
+
+figure;
+plot(markers(2:end,1),markers(2:end,2));
+title('Number of visual markers');
+xlabel('time(seconds)');
+ylabel('Number');
+
 

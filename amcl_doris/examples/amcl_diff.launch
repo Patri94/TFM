@@ -30,7 +30,7 @@
   <param name="laser_model_type" value="likelihood_field"/>
   <!-- <param name="laser_model_type" value="beam"/> -->
   <param name="laser_likelihood_max_dist" value="2.0"/>
-  <param name="update_min_d" value="0.2"/>
+  <param name="update_min_d" value="0.1"/>
   <param name="update_min_a" value="0.5"/>
   <param name="odom_frame_id" value="Doris/odom"/>
   <param name="resample_interval" value="1"/>
@@ -51,8 +51,9 @@
 	<param name="use_map_topic" value="true"/>
 	<param name="marker_z_hit" value="0.995"/>
 	<param name="marker_z_rand" value ="0.005"/>
+        <param name="marker_sigma_hit" value="0.001"/>
   <!--for FUSION laser-camera-->
-  <param name="laser_coeff" value="0.6"/>
-  <param name="camera_coeff" value="0.4"/>
+  <param name="laser_coeff" value="0.5"/>
+  <param name="camera_coeff" value="0.5"/>
 </node>
 </launch>

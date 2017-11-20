@@ -75,7 +75,8 @@ class AMCLMarker : public AMCLSensor
   public: void SetModelLikelihoodField(double z_hit,
                                        double z_rand,
                                        double sigma_hit,
-                                       double landa);
+                                       double landa,
+                                       double marker_coeff);
 
 
   // Update the filter based on the sensor model.  Returns true if the
@@ -116,6 +117,7 @@ class AMCLMarker : public AMCLSensor
   private: double z_short;
   private: double z_max;
   private: double z_rand;
+  private: double marker_coeff;
   //
   // Stddev of Gaussian model for marker hits.
   private: double sigma_hit;

@@ -75,7 +75,8 @@ class AMCLLaser : public AMCLSensor
   public: void SetModelLikelihoodField(double z_hit,
                                        double z_rand,
                                        double sigma_hit,
-                                       double max_occ_dist);
+                                       double max_occ_dist,
+                                       double laser_coeff);
 
   //a more probabilistically correct model - also with the option to do beam skipping
   public: void SetModelLikelihoodFieldProb(double z_hit,
@@ -142,6 +143,7 @@ class AMCLLaser : public AMCLSensor
   private: double z_short;
   private: double z_max;
   private: double z_rand;
+  private: double laser_coeff;
   //
   // Stddev of Gaussian model for laser hits.
   private: double sigma_hit;

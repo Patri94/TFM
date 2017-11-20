@@ -599,9 +599,9 @@ std::vector<Marcador> cDetector::orderDetection(std::vector<Marcador> detection)
         if(detection[i].getMarkerID()<min_ID || detection[i].getMarkerID()>max_ID || detection[i].getSectorID()<min_sector || detection[i].getSectorID()>max_sector || detection[i].getMapID()!=min_map){
             cout<<"tengo que quitar "<<detection[i].getMarkerID()<<" "<<detection[i].getSectorID()<<" "<<detection[i].getMapID()<<" " << i<<endl;
             detection.erase(detection.begin()+i);
-            }
-           // detection.resize(detection.size()-1);
+            i=i-1;
 
+            }
 
     }
         if (detection.size()>=2){
