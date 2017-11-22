@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(real_proofs)
+project(connection)
 set(ROS_BUILD_TYPE Debug)
 set(CMAKE_BUILD_TYPE Debug)
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+ add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -12,39 +12,24 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
-  cv_bridge
-  image_transport
-  geometry_msgs
-  image_geometry
-  tf
-  
-
 )
-find_package (OpenCV REQUIRED)
-include_directories( /usr/local/Aria/include)
-link_directories(/usr/local/Aria/lib)
-link_directories(lib/)
 
 catkin_package(
  INCLUDE_DIRS include
- CATKIN_DEPENDS cv_bridge roscpp std_msgs  image_transport tf geometry_msgs image_geometry  
- DEPENDS OpenCV 
+ CATKIN_DEPENDS roscpp std_msgs rospy
+ DEPENDS 
 )
 
-include_directories(include ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} )
-add_library(real_proofs
-	src/c_real.cpp
+include_directories(include ${catkin_INCLUDE_DIRS} )
+add_library(connection
+	src/c_connection.cpp
 	
 
 )
 
-target_link_libraries(real_proofs ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} )
-add_dependencies(real_proofs ${PROJECT_NAME}_gencpp)
-
-add_executable (real_node src/real_node.cpp)
-target_link_libraries(real_node ${catkin_LIBRARIES} ${OPENCV_LIBS} Aria curl)
-
-
+target_link_libraries(connection ${catkin_LIBRARIES})
+add_executable (connection_node src/connection.cpp)
+target_link_libraries(connection_node ${catkin_LIBRARIES} connection)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -136,7 +121,7 @@ target_link_libraries(real_node ${catkin_LIBRARIES} ${OPENCV_LIBS} Aria curl)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 #catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES real_proofs
+#  LIBRARIES connection
 #  CATKIN_DEPENDS roscpp rospy std_msgs
 #  DEPENDS system_lib
 #)
@@ -154,7 +139,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/real_proofs.cpp
+#   src/${PROJECT_NAME}/connection.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -165,7 +150,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/real_proofs_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/connection_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -208,7 +193,7 @@ include_directories(
    DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
    FILES_MATCHING PATTERN "*.h"
    PATTERN ".svn" EXCLUDE
- )
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
@@ -222,7 +207,7 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_real_proofs.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_connection.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

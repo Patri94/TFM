@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<launch>
+    
+    
+	
+	<node name="DorisConnection" pkg="connection" type="connection_node"  output="screen" >
+	
+	<param name="domain" value= "AF_INET" />
+	<param name="type" value= "SOCK_DGRAM" />
+	<param name="protocol" value= "IPPROTO_UDP" />
+	<param name="address" value= "192.168.1.10" />
+	<param name="port" value= "9191" />
+	<param name="family" value= "AF_INET" />
+	</node>
+	
+        
+</launch>

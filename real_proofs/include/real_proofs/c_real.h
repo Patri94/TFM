@@ -14,9 +14,9 @@
 #include <fstream>
 #include <functional>
 #include <signal.h>
-#include <detector/c_detector.h>
 #include <algorithm>
 #include <cmath>
+#include <math.h>
 #include <functional>
 #include <iostream>
 #include <list>
@@ -25,38 +25,57 @@
 #include <string>
 #include <message_filters/subscriber.h>
 #include <sensor_msgs/Image.h>
-#include <XmlRpcException.h>
-#include <detector/marker.h>
-#include <detector/messagedet.h>
-#include <curls/curl.h>
+#include <sensor_msgs/LaserScan.h>
+#include <nav_msgs/Odometry.h>
+#include <curl/curl.h>
+#include <limits>
+#include <tf/tf.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
 
 class cRealProofs{
 public:
     ros::NodeHandle nh_;
     ros::NodeHandle nh_private_;
-    ros::Publisher  pub_odom, pub_cam, pub_scan;
+    ros::Publisher  pub_odom,  pub_scan;
+    image_transport::Publisher pub_cam;
+
+    //Socket
+    int socket_;
+    int domain;
+    int type;
+    int protocol;
+    int port;
+    struct sockaddr addr;
+    unsigned short sa_family_; //AF_xxx
+    char sa_data_[14]; //protocol adress
+
+
 
     //Camera
     CURL* curl;
     CURLcode res;
     std::vector<char> data;
-    std::ostringdtream cameraStream;
+    std::ostringstream cameraStream;
     static const std::string cameraUrl;
     cv::Mat frame;
     sensor_msgs::ImagePtr image;
 
     //Laser
-    LaserScan *laserDataScan;
-    ArLaserConnector *laserConnector;
-    ArLaser *laser;
+    sensor_msgs::LaserScan scan_msg;
 
     //Odometry
-    ArRobotConnector *connector;
-    ArRobot *robot;
-    ArPose *myRawPose;
-    double prevDistance;
-    double prevRads;
-    double prevVel;
-    double prevRotVel;
+    nav_msgs::Odometry odom_msg;
 
+    //Constructor and Destructor
+    cRealProofs(const ros::NodeHandle& nh,  const ros::NodeHandle& nh_private);
+    cRealProofs(): cRealProofs(ros::NodeHandle(), ros::NodeHandle("~") ){}
+
+
+
+    //functions
+    size_t write_data(char *ptr, size_t size, size_t nmemb, void *userdata);
+    void readImage(void);
+    void readFromSocket(void);
 };
