@@ -10,6 +10,7 @@ int main(int argc, char **argv){
       ros::Rate r (10);
       while(ros::ok()){
               ros::spinOnce();
+              connection_obj.readImage();
               connection_obj.readFromSocket();
               r.sleep();
 

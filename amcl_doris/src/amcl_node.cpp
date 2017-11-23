@@ -1468,11 +1468,11 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     pf_odom_pose_ = pose;
 
     // Resample the particles
-    if(!(++resample_count_scan % resample_interval_))
-    {
+    //if(!(++resample_count_scan % resample_interval_))
+    //{
       pf_update_resample(pf_);
       resampled = true;
-    }
+   // }
 
     pf_sample_set_t* set = pf_->sets + pf_->current_set;
     ROS_DEBUG("Num samples: %d\n", set->sample_count);
@@ -2000,12 +2000,12 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
             //cout<<"numcam"<<num_cam<<endl;
             //cout<<"image_width"<<image_width<<endl;
 
-            if(!(++resample_count_cam % resample_interval_))
-                {
+            //if(!(++resample_count_cam % resample_interval_))
+                //{
                   //cout<<"resample"<<endl;
                   pf_update_resample(pf_);
                   resampled = true;
-            }
+            //}
 
             pf_sample_set_t* set = pf_->sets + pf_->current_set;
             ROS_INFO("Num samples: %d\n", set->sample_count);

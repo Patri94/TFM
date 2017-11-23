@@ -12,24 +12,30 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  tf2
+  tf2_ros
+  geometry_msgs
+  image_transport
+  cv_bridge
 )
-
+find_package (OpenCV REQUIRED)
+link_directories(lib/)
 catkin_package(
  INCLUDE_DIRS include
- CATKIN_DEPENDS roscpp std_msgs rospy
- DEPENDS 
+ CATKIN_DEPENDS roscpp std_msgs rospy tf2 geometry_msgs tf2_ros image_transport cv_bridge
+ DEPENDS OpenCV
 )
 
-include_directories(include ${catkin_INCLUDE_DIRS} )
+include_directories(include ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 add_library(connection
 	src/c_connection.cpp
 	
 
 )
 
-target_link_libraries(connection ${catkin_LIBRARIES})
+target_link_libraries(connection ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_executable (connection_node src/connection.cpp)
-target_link_libraries(connection_node ${catkin_LIBRARIES} connection)
+target_link_libraries(connection_node ${catkin_LIBRARIES} ${OPENCV_LIBS} connection curl)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 

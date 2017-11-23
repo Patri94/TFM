@@ -33,16 +33,20 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
-
+#include <tf2_ros/static_transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <tf2_ros/transform_broadcaster.h>
 
 class cConnection{
 
 public:
 ros::NodeHandle nh_;
 ros::NodeHandle nh_private_;
+ros::Publisher laser_pub;
+image_transport::Publisher image_pub;
 
 //Socket
-int socket_;
+int socket_,socket_tcp;
 int domain;
 int type;
 int protocol;
@@ -51,10 +55,32 @@ struct sockaddr_in addr;
 unsigned short sa_family_; //AF_xxx
 char sa_data_[14]; //protocol adress
 
+//Camera
+CURL* curl;
+CURLcode res;
+std::vector<char> data;
+std::ostringstream cameraStream;
+const std::string cameraUrl;
+cv::Mat frame;
+sensor_msgs::ImagePtr image_msg;
+
+//TF
+ //laser
+tf2_ros::StaticTransformBroadcaster static_broadcaster;
+geometry_msgs::TransformStamped static_laserTransform;
+geometry_msgs::TransformStamped static_cameraTransform;
+sensor_msgs::LaserScan scan;
+
+ //odometry
+tf2_ros::TransformBroadcaster br;
+ geometry_msgs::TransformStamped odom;
+
+
 cConnection(const ros::NodeHandle& nh,  const ros::NodeHandle& nh_private);
 cConnection(): cConnection(ros::NodeHandle(), ros::NodeHandle("~") ){}
 
 void readFromSocket();
 void decoMessage(char message [], int size);
-
+size_t write_data(char *ptr, size_t size, size_t nmemb, void *userdata);
+void readImage(void);
 };
