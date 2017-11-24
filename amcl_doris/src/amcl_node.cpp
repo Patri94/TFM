@@ -322,6 +322,9 @@ class AmclNode
     double marker_coeff;
     double laser_coeff;
 
+    //Simulation or real (for camera)
+    int simulation;
+
 
 
 };
@@ -541,6 +544,7 @@ AmclNode::AmclNode() :
   private_nh_.getParam("/amcl_doris/marker_z_rand",marker_z_rand);
   private_nh_.getParam("/amcl_doris/marker_sigma_hit",marker_sigma_hit);
   private_nh_.getParam("/amcl_doris/marker_landa",marker_landa);
+  private_nh_.getParam("/amcl_doris/simulation",simulation);
   //cout<<"marker_landa"<<marker_landa<<endl;
   //Reading mapfile
   std::vector<geometry_msgs::Pose> Centros;
@@ -790,6 +794,7 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
       marker_->tf_cameras=tf_cameras;
       marker_->num_cam=num_cam;
       marker_->image_width=image_width;
+      marker_->simulation=simulation;
   }
 
   delete marker_detection_filter_;
@@ -1901,6 +1906,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
         marker_=new AMCLMarker(*marker_);
         marker_update=true;
         frame_to_camera_=msg->header.frame_id;
+        marker_->simulation=simulation;
     }
         pf_vector_t pose;
 

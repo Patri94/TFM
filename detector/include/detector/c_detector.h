@@ -35,7 +35,7 @@ class cDetector{
 public:
     ros::NodeHandle nh_;
     ros::NodeHandle nh_private_;
-    cv::Mat cam1,cam2,cam3,comb,gray,thresholded,canonicalMarkerImage;
+    cv::Mat cam1,cam2,cam3,comb,gray,thresholded,canonicalMarkerImage,real_cam;
     image_transport::Publisher pub_comb;
     sensor_msgs::ImagePtr comb_msg;
     geometry_msgs::Pose estimated_pose;
@@ -46,9 +46,13 @@ public:
     sensor_msgs::ImagePtr ms1, ms2, ms3;
     std::vector<cv::Point2f> markerCorners,DetectedCorners;
     cv::Size markerSize;
-    ros::Subscriber odometry, sub_cam1, sub_cam2,sub_cam3;
+    ros::Subscriber odometry, sub_cam1, sub_cam2,sub_cam3, sub_camDoris;
     ros::Publisher publish_detection;
-    //detector::detector msg_detected;
+    int simulation;
+    cv::Mat camMatrix, distCoeff,xi;
+    cv::Matx33f Knew;
+    cv::Size newSize;
+
 
     //Constructor and Destructor
     cDetector(const ros::NodeHandle& nh,  const ros::NodeHandle& nh_private);
@@ -59,6 +63,7 @@ public:
     void imageCallback2(const sensor_msgs::ImageConstPtr& msg );
     void imageCallback3(const sensor_msgs::ImageConstPtr& msg );
     void infoCallback(const sensor_msgs::ImageConstPtr& msg);
+    void realCallback(const sensor_msgs::ImageConstPtr& msg);
 
     //Detector
     void imageBlending(void);
@@ -82,6 +87,7 @@ public:
     void OdomCallback (const nav_msgs::OdometryConstPtr& msg);
     void detectorTask(void);
     std::vector<Marcador> orderDetection(std::vector<Marcador> detection);
+    void undistortPoints(cv::InputArray distorted, cv::OutputArray undistorted, cv::InputArray K, cv::InputArray D, cv::InputArray R, cv::InputArray P);
 
 };
 

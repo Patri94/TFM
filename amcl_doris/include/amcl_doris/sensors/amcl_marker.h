@@ -109,6 +109,7 @@ class AMCLMarker : public AMCLSensor
   private: int max_obs;
   public: std::vector<Marcador> temp_obs;
   public: Mat image_filter;
+  public: int simulation;
 
   // Marker model params
   //

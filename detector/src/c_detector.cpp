@@ -1,11 +1,13 @@
 ﻿#include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <sstream>
+#include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/aruco.hpp>
 #include <opencv2/calib3d.hpp>
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc.hpp"
+#include <opencv2/ccalib/omnidir.hpp>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <string>
@@ -32,8 +34,11 @@
 #define BLOCK_SIZE_FOR_ADAPTIVE_THRESHOLD 75
 #define CELL_MARKER_SIZE 7
 #define CURVE_SIZE 4
+#define RECTIFIED_IMAGE_WIDTH 1812
+#define RECTIFIED_IMAGE_HEIGHT 679
 
 using namespace cv;
+using namespace cv::omnidir;
 using namespace std;
 using namespace sensor_msgs;
 using namespace message_filters;
@@ -48,6 +53,7 @@ cDetector::cDetector ( const ros::NodeHandle& nh,const ros::NodeHandle& nh_priva
 {
     //Load Parameters
     float  image_width, marker_height, marker_width, num_cam;
+
     //XmlRpc::XmlRpcValue marker_list;
      nh_.getParam("/detector/IMAGE_WIDTH",image_width);
      nh_.getParam("/DetectorNode/min_ID",min_ID);
@@ -56,34 +62,56 @@ cDetector::cDetector ( const ros::NodeHandle& nh,const ros::NodeHandle& nh_priva
      nh_.getParam("/DetectorNode/max_sector",max_sector);
      nh_.getParam("/DetectorNode/min_map",min_map);
      nh_.getParam("/DetectorNode/max_map",max_map);
-     cout<<min_map<<endl;
-     cout<<max_map<<endl;
-     cout<<min_sector<<endl;
-     cout<<max_sector<<endl;
-     cout<<min_ID<<endl;
-     cout<<max_ID<<endl;
-     //waitKey();
-    //cout<<marker_list.size()<<endl;
+     nh_.getParam("/DetectorNode/simulation",this->simulation);
+
     //Initialize subscribers for cameras
+    switch (this->simulation){
+        case 1:
+    {
     sub_cam1=nh_.subscribe<sensor_msgs::Image> ("Doris/cam1/image_raw",1,&cDetector::infoCallback,this);
     sub_cam2=nh_.subscribe<sensor_msgs::Image> ("Doris/cam2/image_raw",1,&cDetector::imageCallback2,this);
     sub_cam3=nh_.subscribe<sensor_msgs::Image> ("Doris/cam3/image_raw",1,&cDetector::imageCallback3,this);
 
-    image_transport::ImageTransport it(nh_);
-    this->pub_comb=it.advertise("/DetectorNode/detector_output",1);
+    break;
+    }
+        case 0:
+    {
+    sub_camDoris=nh_.subscribe<sensor_msgs::Image> ("Doris/camera/image_raw",1,&cDetector::realCallback,this);
+
+    newSize= cv::Size(RECTIFIED_IMAGE_WIDTH, RECTIFIED_IMAGE_HEIGHT);
+
+    camMatrix = cv::Mat(3, 3, CV_32F);
+    camMatrix.at<float>(0, 0) = 3.3148337972624245e+02;
+    camMatrix.at<float>(0, 1) = 0;
+    camMatrix.at<float>(0, 2) = 6.5050896530720797e+02;
+    camMatrix.at<float>(1, 0) = 0.0;
+    camMatrix.at<float>(1, 1) = 3.3296507853901846e+02;
+    camMatrix.at<float>(1, 2) = 4.9324794942591592e+02;
+    camMatrix.at<float>(2, 0) = 0.0;
+    camMatrix.at<float>(2, 1) = 0.0;
+    camMatrix.at<float>(2, 2) = 1.0;
+
+    distCoeff = cv::Mat(4, 1, CV_32F);
+    distCoeff.at<float>(0, 0) = -5.0278669230113635e-02;
+    distCoeff.at<float>(1, 0) = 2.7927571053875219e-02;
+    distCoeff.at<float>(2, 0) = -9.7303697830329119e-03;
+    distCoeff.at<float>(3, 0) = 0;
+
+    Knew = cv::Matx33f(newSize.width / (2 * M_PI), 0, 0, 0, newSize.height / M_PI, 0, 0, 0, 1);
+    xi = cv::Mat(1, 1, CV_32FC1);
+    xi.at<float>(0, 0) = 1.5861076761699640e+00;
+    break;
+    }
+    default:
+        break;
+
+    }
 
 
     //Initialize publishers
      this->publish_detection=nh_.advertise<detector::messagedet>("/DetectorNode/detection",1,true);
-    //detector::detector msg_det;
-   /* geometry_msgs::Point corner;
-    detector::marker detected;
-    corner.x=1.0;
-    corner.y=1.0;
-    corner.z=1.0;
-    detected.Corners.push_back(corner);
-     msg_det.DetectedMarkers.push_back(detected);*/
-     //publish_detection.publish(msg_det);
+    image_transport::ImageTransport it(nh_);
+    this->pub_comb=it.advertise("/DetectorNode/detector_output",1);
 
 
     //Size of markers for the detector
@@ -116,7 +144,7 @@ cDetector::~cDetector(){
 void cDetector::infoCallback(const sensor_msgs::ImageConstPtr& msg){
     //cout<<"Callback"<<endl;
     this->cam1 = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
-     this->ms1 = cv_bridge::CvImage(std_msgs::Header(), "bgr8", this->cam1).toImageMsg();
+    this->ms1 = cv_bridge::CvImage(std_msgs::Header(), "bgr8", this->cam1).toImageMsg();
    // cv::imshow("cam1", this->cam1);
    // cv::waitKey(30);
 }
@@ -142,6 +170,12 @@ void cDetector::imageCallback3(const sensor_msgs::ImageConstPtr& msg){
     this->ms3 = cv_bridge::CvImage(std_msgs::Header(), "bgr8", this->cam3).toImageMsg();
    // cv::imshow("cam3", this->cam3);
    // cv::waitKey(30);
+}
+
+void cDetector::realCallback(const sensor_msgs::ImageConstPtr& msg){
+    cv::Mat image;
+    image=cv_bridge::toCvShare(msg, "bgr8")->image.clone();
+    cv::omnidir::undistortImage(image, this->comb, camMatrix, distCoeff, xi, RECTIFY_CYLINDRICAL, Knew, newSize);
 }
 
 /**
@@ -175,7 +209,10 @@ void cDetector::imageTreatment(void){
 }
 
 void cDetector::detectorTask(void){
+
+    if (this->simulation == true){
     this->imageBlending();
+    }
     this->imageTreatment();
     this->brightnessAverage();
     this->threshold();
@@ -508,6 +545,7 @@ void cDetector::createMessage(void){
        for (int i=0;i<this->OptMarkers.size();i++){
                 detector::marker detected;
                 std::vector<cv::Point2f> corners_f =this->OptMarkers[i].getMarkerPoints();
+                //Adding undistort Points ??
                 for (int j=0;j<4;j++){
                         geometry_msgs::Point32 corner;
                         corner.x=(float)corners_f[j].x;
@@ -644,6 +682,95 @@ std::vector<Marcador> cDetector::orderDetection(std::vector<Marcador> detection)
 
     }
 
+/*void cDetector::undistortPoints(cv::InputArray distorted, cv::OutputArray undistorted, cv::InputArray K, cv::InputArray D, cv::InputArray R, cv::InputArray P){
+    //CV_INSTRUMENT_REGION()
+
+    // will support only 2-channel data now for points
+    CV_Assert(distorted.type() == CV_32FC2 || distorted.type() == CV_64FC2);
+    undistorted.create(distorted.size(), distorted.type());
+
+    CV_Assert(P.empty() || P.size() == cv::Size(3, 3) || P.size() == cv::Size(4, 3));
+    CV_Assert(R.empty() || R.size() == cv::Size(3, 3) || R.total() * R.channels() == 3);
+    CV_Assert(D.total() == 4 && K.size() == cv::Size(3, 3) && (K.depth() == CV_32F || K.depth() == CV_64F));
+
+    cv::Vec2d f, c;
+    if (K.depth() == CV_32F){
+        cv::Matx33f camMat = K.getMat();
+        f = cv::Vec2f(camMat(0, 0), camMat(1, 1));
+        c = cv::Vec2f(camMat(0, 2), camMat(1, 2));
+    } else {
+        cv::Matx33d camMat = K.getMat();
+        f = cv::Vec2d(camMat(0, 0), camMat(1, 1));
+        c = cv::Vec2d(camMat(0, 2), camMat(1, 2));
+    }
+
+    cv::Vec4d k = D.depth() == CV_32F ? (cv::Vec4d)*D.getMat().ptr<cv::Vec4f>(): *D.getMat().ptr<cv::Vec4d>();
+
+    cv::Matx33d RR = cv::Matx33d::eye();
+    if (!R.empty() && R.total() * R.channels() == 3)
+    {
+        cv::Vec3d rvec;
+        R.getMat().convertTo(rvec, CV_64F);
+        RR = cv::Affine3d(rvec).rotation();
+    }
+    else if (!R.empty() && R.size() == cv::Size(3, 3))
+        R.getMat().convertTo(RR, CV_64F);
+
+    if(!P.empty())
+    {
+        cv::Matx33d PP;
+        P.getMat().colRange(0, 3).convertTo(PP, CV_64F);
+        RR = PP * RR;
+    }
+
+    // start undistorting
+    const cv::Vec2f* srcf = distorted.getMat().ptr<cv::Vec2f>();
+    const cv::Vec2d* srcd = distorted.getMat().ptr<cv::Vec2d>();
+    cv::Vec2f* dstf = undistorted.getMat().ptr<cv::Vec2f>();
+    cv::Vec2d* dstd = undistorted.getMat().ptr<cv::Vec2d>();
+
+    size_t n = distorted.total();
+    int sdepth = distorted.depth();
+
+    for(size_t i = 0; i < n; i++ )
+    {
+        cv::Vec2d pi = sdepth == CV_32F ? (cv::Vec2d)srcf[i] : srcd[i];  // image point
+        cv::Vec2d pw((pi[0] - c[0])/f[0], (pi[1] - c[1])/f[1]);      // world point
+
+        double scale = 1.0;
+
+        double theta_d = sqrt(pw[0]*pw[0] + pw[1]*pw[1]);
+
+        // the current camera model is only valid up to 180° FOV
+        // for larger FOV the loop below does not converge
+        // clip values so we still get plausible results for super fisheye images > 180°
+        theta_d = min(max(-CV_PI/2., theta_d), CV_PI/2.);
+
+        if (theta_d > 1e-8)
+        {
+            // compensate distortion iteratively
+            double theta = theta_d;
+            for(int j = 0; j < 10; j++ )
+            {
+                double theta2 = theta*theta, theta4 = theta2*theta2, theta6 = theta4*theta2, theta8 = theta6*theta2;
+                theta = theta_d / (1 + k[0] * theta2 + k[1] * theta4 + k[2] * theta6 + k[3] * theta8);
+            }
+
+            scale = std::tan(theta) / theta_d;
+        }
+
+        cv::Vec2d pu = pw * scale; //undistorted point
+
+        // reproject
+        cv::Vec3d pr = RR * cv::Vec3d(pu[0], pu[1], 1.0); // rotated point optionally multiplied by new camera matrix
+        cv::Vec2d fi(pr[0]/pr[2], pr[1]/pr[2]);       // final
+
+        if( sdepth == CV_32F )
+            dstf[i] = fi;
+        else
+            dstd[i] = fi;
+    }
+}*/
 
 
 

@@ -55,5 +55,7 @@
   <!--for FUSION laser-camera-->
   <param name="laser_coeff" value="1.0"/>
   <param name="camera_coeff" value="1.0"/>
+  <!-- simulation or real -->
+  <param name="simulation" value = "1"/>
 </node>
 </launch>

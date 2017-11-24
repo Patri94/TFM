@@ -166,7 +166,26 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           //Calculate projection of marker corners
           std::vector<geometry_msgs::Point> relative_to_cam=self->CalculateRelativePose(detected_from_map[j],sample_pose);
           //cout<<"after relative pose"<<endl;
-          std::vector<cv::Point2d> projection=self->projectPoints(relative_to_cam);
+           std::vector<cv::Point2d> projection;
+          switch (self->simulation){
+            case 1:
+                projection=self->projectPoints(relative_to_cam);
+            case 0:
+          {
+              for (int i=0; i< relative_to_cam.size(); i++){
+                  cv::Point3d Coord;
+                  Coord.x=relative_to_cam[i].x;
+                  Coord.y=relative_to_cam[i].y;
+                  Coord.z=relative_to_cam[i].z;
+                  projection.push_back(self->pin_model.project3dToPixel(Coord));
+              }
+              break;
+          }
+          default:
+              break;
+
+
+          }
           //cout<<projection.size()<<endl;
         /*  line (self->image_filter,projection[0], projection[1],Scalar(0,0,255),1);
           line (self->image_filter,projection[1], projection[2],Scalar(0,0,255),1);
@@ -293,23 +312,57 @@ std::vector<cv::Point2d> AMCLMarker::projectPoints(std::vector<geometry_msgs::Po
 
 void AMCLMarker::LoadCameraInfo(void){
     sensor_msgs::CameraInfo cam_inf_ed;
-    cam_inf_ed.header.frame_id="Cam1";
-    cam_inf_ed.height=679;
-    cam_inf_ed.width=604;
-    cam_inf_ed.distortion_model="plumb_bob";
-    double Da[5]={-0.2601958609577983, 0.05505240192232372, 0.0, -0.0045449850126361765, 0.0};
-    boost::array<double, 9ul> K={ {174.746839097, 0.0, 906.0, 0.0, 174.746839097, 339.5, 0.0, 0.0, 1.0} } ;
-    boost::array<double, 9ul> R={ {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0} };
-    boost::array<double, 12ul> P={ {174.64077512103418, 0.0, 906.0, 0.0, 0.0, 174.64077512103418, 339.5, 0.0, 0.0, 0.0, 1.0, 0.0} };
-    std::vector<double> D(Da,Da +(sizeof(Da)/sizeof(Da[0])));
-    cam_inf_ed.D=D;
-    cam_inf_ed.K=K;
-    cam_inf_ed.R=R;
-    cam_inf_ed.P=P;
-    cam_inf_ed.binning_x=0.0;
-    cam_inf_ed.binning_y=0.0;
-    cam_inf_ed.roi.height=0;
-    cam_inf_ed.roi.width=0;
+
+    switch (this->simulation){
+        case 1:
+    {
+            cam_inf_ed.header.frame_id="Cam1";
+            cam_inf_ed.height=679;
+            cam_inf_ed.width=604;
+            cam_inf_ed.distortion_model="plumb_bob";
+            double Da[5]={-0.2601958609577983, 0.05505240192232372, 0.0, -0.0045449850126361765, 0.0};
+            boost::array<double, 9ul> K={ {174.746839097, 0.0, 906.0, 0.0, 174.746839097, 339.5, 0.0, 0.0, 1.0} } ;
+            boost::array<double, 9ul> R={ {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0} };
+            boost::array<double, 12ul> P={ {174.64077512103418, 0.0, 906.0, 0.0, 0.0, 174.64077512103418, 339.5, 0.0, 0.0, 0.0, 1.0, 0.0} };
+            std::vector<double> D(Da,Da +(sizeof(Da)/sizeof(Da[0])));
+            cam_inf_ed.D=D;
+            cam_inf_ed.K=K;
+            cam_inf_ed.R=R;
+            cam_inf_ed.P=P;
+            cam_inf_ed.binning_x=0.0;
+            cam_inf_ed.binning_y=0.0;
+            cam_inf_ed.roi.height=0;
+            cam_inf_ed.roi.width=0;
+            break;
+    }
+
+        case 0:
+    {
+            cam_inf_ed.header.frame_id="Doris/cam1_link";
+            cam_inf_ed.height=679;
+            cam_inf_ed.width=604;
+            cam_inf_ed.distortion_model="plumb_bob";
+            double Dar[5]={-0.2601958609577983, 0.05505240192232372, 0.0, -0.0045449850126361765, 0.0};
+            boost::array<double, 9ul> Kr={ {174.746839097, 0.0, 906.0, 0.0, 174.746839097, 339.5, 0.0, 0.0, 1.0} } ;
+            boost::array<double, 9ul> Rr={ {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0} };
+            boost::array<double, 12ul> Pr={ {174.64077512103418, 0.0, 906.0, 0.0, 0.0, 174.64077512103418, 339.5, 0.0, 0.0, 0.0, 1.0, 0.0} };
+            std::vector<double> Dr(Dar,Dar +(sizeof(Dar)/sizeof(Dar[0])));
+            cam_inf_ed.D=Dr;
+            cam_inf_ed.K=Kr;
+            cam_inf_ed.R=Rr;
+            cam_inf_ed.P=Pr;
+            cam_inf_ed.binning_x=0.0;
+            cam_inf_ed.binning_y=0.0;
+            cam_inf_ed.roi.height=0;
+            cam_inf_ed.roi.width=0;
+            break;
+    }
+        default :
+            break;
+    }
+
+
+
 
     this->pin_model.fromCameraInfo(cam_inf_ed);
 
@@ -320,8 +373,21 @@ std::vector<geometry_msgs::Point> AMCLMarker::CalculateRelativePose (Marcador Ma
     tf::Transform MundTrob, invMundTrob,RobTCam,invRobotTCam;
     tf::Quaternion RotCam;
     //From Robot base to camera
-    RotCam.setRPY(-M_PI/2,0,-M_PI/2);//Pich de M_PI/2
+    RotCam.setRPY(-M_PI/2,0,-M_PI/2);//Pitch de M_PI/2
+    switch (this->simulation){
+    case 1:
+    {
     RobTCam.setOrigin(tf::Vector3(0,0,1.3925));
+    break;
+    }
+    case 0:
+    {
+        RobTCam.setOrigin(tf::Vector3(0,0,1.4));
+        break;
+    }
+    default:
+        break;
+    }
     RobTCam.setRotation(RotCam);
     tf::Quaternion QMundRCam (CamaraMundo.orientation.x,CamaraMundo.orientation.y,CamaraMundo.orientation.z,CamaraMundo.orientation.w);
     tf::Vector3 Trasl1 (CamaraMundo.position.x,CamaraMundo.position.y,CamaraMundo.position.z);

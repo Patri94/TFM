@@ -12,6 +12,7 @@
 	<param name="max_sector" value="5"/>
 	<param name="min_map" value="11"/>
 	<param name="max_map" value="11"/>
+        <param name="simulation" value="1"/>
 	</node>
 	
         

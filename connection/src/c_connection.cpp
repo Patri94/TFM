@@ -77,6 +77,20 @@ cConnection::cConnection (const ros::NodeHandle& nh, const ros::NodeHandle& nh_p
         this->static_laserTransform.transform.rotation.w=1.0;
         this->static_laserTransform.header.stamp=ros::Time::now();
         this->static_broadcaster.sendTransform(static_laserTransform);
+    //Publishing transform to camera_link
+    this->static_cameraTransform.header.frame_id="Doris/cuerpo";
+    this->static_cameraTransform.child_frame_id="Doris/cam1_link";
+    this->static_cameraTransform.transform.translation.x=0.0;
+    this->static_cameraTransform.transform.translation.y=0.0;
+    this->static_cameraTransform.transform.translation.z=1.4;
+    this->static_cameraTransform.transform.rotation.x=0.0;
+    this->static_cameraTransform.transform.rotation.y=0.0;
+    this->static_cameraTransform.transform.rotation.z=0.0;
+    this->static_cameraTransform.transform.rotation.w=1.0;
+    this->static_cameraTransform.header.stamp=ros::Time::now();
+    this->static_broadcaster.sendTransform(static_cameraTransform);
+
+
     //Camera
     const string cameraUrl= "http://192.168.0.19/record/current.jpg";
     curl = curl_easy_init();
