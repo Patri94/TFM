@@ -95,7 +95,9 @@ bool AMCLMarker::UpdateSensor(pf_t *pf, AMCLSensorData *data)
 double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* set)
 {
   //cout<<"in particle filter"<<endl;
+
   AMCLMarker *self;
+
   pf_sample_t *sample;
   pf_vector_t pose;
   pf_vector_t hit;
@@ -104,6 +106,7 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
   std::vector<float> z;
   self = (AMCLMarker*) data->sensor;
   std::vector<Marcador> observation=data->markers_obs;
+  cout<<"landa in likelihood"<<self->landa<<endl;
   if (!self->image_filter.empty()){
 
   total_weight = 0.0;
@@ -123,11 +126,11 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
         }
   }
   //cout<<"in map"<<detected_from_map.size()<<endl;
-  for (int i=0;i<observation.size();i++){
+  /*for (int i=0;i<observation.size();i++){
       cout<<"map"<<observation[i].getMapID()<<endl;
       cout<<"sector"<<observation[i].getSectorID()<<endl;
       cout<<"ID"<<observation[i].getMarkerID()<<endl;
-  }
+  }*/
   //waitKey();
   //cout<<"map"<<detected_from_map.size()<<endl;
   //cout<<"observed"<<observation.size()<<endl;
@@ -167,11 +170,15 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           std::vector<geometry_msgs::Point> relative_to_cam=self->CalculateRelativePose(detected_from_map[j],sample_pose);
           //cout<<"after relative pose"<<endl;
            std::vector<cv::Point2d> projection;
+           cout<<"simulation"<<(self->simulation)<<endl;
           switch (self->simulation){
             case 1:
+                cout<<"simu"<<endl;
                 projection=self->projectPoints(relative_to_cam);
+              break;
             case 0:
           {
+              cout<<"real"<<endl;
               for (int i=0; i< relative_to_cam.size(); i++){
                   cv::Point3d Coord;
                   Coord.x=relative_to_cam[i].x;
@@ -202,14 +209,14 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           for (int i=0;i<4;i++){
               pz=0.0;
               //Opción1:Gaussian model
-              pz+=self->z_hit*exp(-(z[i]*z[i]) / z_hit_denom);
+              //pz+=self->z_hit*exp(-(z[i]*z[i]) / z_hit_denom);
               //Random measurements
-              pz+=self->z_rand*z_rand_mult;
+              //pz+=self->z_rand*z_rand_mult;
              // cout<<"pz: "<<pz<<endl;
-              p+=pz*pz*pz;
+              //p+=pz*pz*pz;
               //Opción 2:Distribución exponencial (Humanoid P12)
-              //pz+=z[i];
-              //p+=self->landa*exp(-self->landa*pz);
+              pz+=z[i];
+              p+=self->landa*exp(-self->landa*pz);
           }
 
           if (pz>1.0){
@@ -381,8 +388,8 @@ std::vector<geometry_msgs::Point> AMCLMarker::CalculateRelativePose (Marcador Ma
     break;
     }
     case 0:
-    {
-        RobTCam.setOrigin(tf::Vector3(0,0,1.4));
+        cout<<"realrelative"<<endl;    {
+        RobTCam.setOrigin(tf::Vector3(-0.26,0,1.46));
         break;
     }
     default:

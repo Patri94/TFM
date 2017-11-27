@@ -50,15 +50,45 @@ cConnection::cConnection (const ros::NodeHandle& nh, const ros::NodeHandle& nh_p
 :nh_(nh),nh_private_(nh_private)
 {
     //Initializing TCP and UDP sockets
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr("192.168.1.101");
     addr.sin_port=htons(14004);
-    inet_pton(AF_INET,"192.168.1.101",& (addr.sin_addr));
+    //inet_pton(AF_INET,"192.168.1.101",& (addr.sin_addr));
 
     this->socket_tcp=socket(AF_INET,SOCK_STREAM,0);
     this->socket_=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
 
     //connecting sockets
-    int result=connect(this->socket_tcp, (sockaddr *) &addr, sizeof(this->addr));
-    int connection=bind(this->socket_, (const struct sockaddr *) &addr,  sizeof(this->addr));
+    int result=connect(this->socket_tcp, (const struct sockaddr *) &addr, sizeof(this->addr));
+    //Initializing TCP and UDP sockets
+    addr_udp.sin_family = AF_INET;
+    addr_udp.sin_addr.s_addr = INADDR_ANY;
+    int port_udp = 15010;
+    addr_udp.sin_port=htons(port_udp);
+    int connection=bind(this->socket_, (struct sockaddr *) &addr_udp,  sizeof(this->addr_udp));
+    cout<<connection<<endl;
+    //ros::Rate r (1000);
+    //r.sleep();
+    usleep(500*1000);
+    //Handshake
+    char buffer[40];
+    memset(buffer, 0, 40);
+    char port[10];
+    sprintf(port, "%d", port_udp);
+    int l=strlen(port);
+    l++;
+    buffer[0]=57;
+    buffer[1]=48;
+    buffer[2]=l%256;
+    buffer[3]=0;
+    buffer[4]=l/256;
+    buffer[5]=0x7f;
+    // std::string port_str(port);
+    memcpy(buffer + 6, port, l);
+
+    //sending message
+    int ret=write(socket_tcp, buffer, l + 6);
+    cout<<ret<<endl;
 
     //Publishing laser_data
     this->laser_pub=nh_.advertise<sensor_msgs::LaserScan>("Doris/scan",1,true);
@@ -68,9 +98,9 @@ cConnection::cConnection (const ros::NodeHandle& nh, const ros::NodeHandle& nh_p
     //Publishing tf to laser_link
         this->static_laserTransform.header.frame_id="Doris/cuerpo";
         this->static_laserTransform.child_frame_id="Doris/laser_link";
-        this->static_laserTransform.transform.translation.x=0.1;
+        this->static_laserTransform.transform.translation.x=0.0;
         this->static_laserTransform.transform.translation.y=0.0;
-        this->static_laserTransform.transform.translation.z=0.35;
+        this->static_laserTransform.transform.translation.z=0.296;
         this->static_laserTransform.transform.rotation.x=0.0;
         this->static_laserTransform.transform.rotation.y=0.0;
         this->static_laserTransform.transform.rotation.z=0.0;
@@ -80,9 +110,9 @@ cConnection::cConnection (const ros::NodeHandle& nh, const ros::NodeHandle& nh_p
     //Publishing transform to camera_link
     this->static_cameraTransform.header.frame_id="Doris/cuerpo";
     this->static_cameraTransform.child_frame_id="Doris/cam1_link";
-    this->static_cameraTransform.transform.translation.x=0.0;
+    this->static_cameraTransform.transform.translation.x=-0.26;
     this->static_cameraTransform.transform.translation.y=0.0;
-    this->static_cameraTransform.transform.translation.z=1.4;
+    this->static_cameraTransform.transform.translation.z=1.46;
     this->static_cameraTransform.transform.rotation.x=0.0;
     this->static_cameraTransform.transform.rotation.y=0.0;
     this->static_cameraTransform.transform.rotation.z=0.0;
@@ -92,11 +122,11 @@ cConnection::cConnection (const ros::NodeHandle& nh, const ros::NodeHandle& nh_p
 
 
     //Camera
-    const string cameraUrl= "http://192.168.0.19/record/current.jpg";
+   /* const string cameraUrl= "http://192.168.0.19/record/current.jpg";
     curl = curl_easy_init();
     curl_easy_setopt(curl, CURLOPT_URL, cameraUrl.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &cConnection::write_data);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &cameraStream);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &cameraStream);*/
 
 }
 
@@ -132,23 +162,24 @@ void cConnection::readImage(void){
 }
 
 void cConnection::readFromSocket(void){
-    //cout<<"entro"<<endl;
+    cout<<"entro"<<endl;
     long valread;
-    char message [1024];
-    unsigned int sourceSize= sizeof(this->addr);
+    char message [4096];
+    memset(message, 0, 4096);
+    struct sockaddr_in inAddr;
+    unsigned int sourceSize= sizeof(inAddr);
     //cout<<"conectando"<<endl;
     //Reading from socket
-    valread=recvfrom(this->socket_,message, 1024,0,  (struct sockaddr *) &addr, &sourceSize);
-
+    //valread=recv(this->socket_,message,1024,0);
+    valread=recvfrom(this->socket_,message, 4096,0,  (struct sockaddr *) &inAddr, &sourceSize);
+    cout<<valread<<endl;
     //this->decoMessage(message,valread);
     if (valread<0){
         perror("recvfrom()");
 
     }else{
-        //cout<<message<<endl;
-        this->decoMessage(message,valread);
-        memset(&message[0], 0, sizeof(message));
-
+        cout<<message<<endl;
+        //this->decoMessage(message,valread);
     }
 }
 

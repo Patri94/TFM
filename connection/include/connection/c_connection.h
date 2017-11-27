@@ -52,6 +52,7 @@ int type;
 int protocol;
 int port;
 struct sockaddr_in addr;
+struct sockaddr_in addr_udp;
 unsigned short sa_family_; //AF_xxx
 char sa_data_[14]; //protocol adress
 

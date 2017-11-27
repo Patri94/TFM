@@ -501,15 +501,15 @@ AmclNode::AmclNode() :
 
   set_map_srv_= nh_.advertiseService("set_map", &AmclNode::setMapCallback, this);
 
-  laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
-   laser_scan_filter_ =
-         new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_,
+ laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
+ laser_scan_filter_ =
+       new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_,
                                                        *tf_,
-                                                        odom_frame_id_, 
-                                                        100);
+                                                       odom_frame_id_,
+                                                       100);
 
-   laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
-   this, _1));
+  laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
+  this, _1));
 
   if(use_map_topic_) {
     map_sub_ = nh_.subscribe("map", 1, &AmclNode::mapReceived, this);
@@ -544,6 +544,7 @@ AmclNode::AmclNode() :
   private_nh_.getParam("/amcl_doris/marker_z_rand",marker_z_rand);
   private_nh_.getParam("/amcl_doris/marker_sigma_hit",marker_sigma_hit);
   private_nh_.getParam("/amcl_doris/marker_landa",marker_landa);
+  cout<<"landa"<<marker_landa<<endl;
   private_nh_.getParam("/amcl_doris/simulation",simulation);
   //cout<<"marker_landa"<<marker_landa<<endl;
   //Reading mapfile
@@ -617,7 +618,7 @@ AmclNode::AmclNode() :
   marker_detection_sub_=new message_filters::Subscriber<detector::messagedet>(nh_,"DetectorNode/detection",100);
   marker_detection_filter_=new tf::MessageFilter<detector::messagedet>(*marker_detection_sub_,*tf_,odom_frame_id_,100);
   marker_detection_filter_->registerCallback(boost::bind(&AmclNode::detectionCallback,
-                                                  this, _1));
+                                                 this, _1));
   ground_truth_subs=nh_.subscribe("/Doris/ground_truth/state",1, &AmclNode::groundTruthCallback,this);
   m_force_update_cam = false;
   m_force_update_scan=false;
