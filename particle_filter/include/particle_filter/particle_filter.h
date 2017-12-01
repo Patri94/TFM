@@ -42,8 +42,9 @@ using namespace tf;
         std::vector<Marcador> map;
         visualization_msgs::Marker pub_map;
         //nav_msgs::odometry odom_msg;
-
+        int simulation;
         sensor_msgs::CameraInfo cam_inf_ed;
+        Mat camMatrix, distCoeff,xi;
 
         //Constructor and Destructor
        ParticleFilter(const ros::NodeHandle& nh1,  const ros::NodeHandle& nh_private1);

@@ -49,6 +49,9 @@ using namespace XmlRpc;
 cConnection::cConnection (const ros::NodeHandle& nh, const ros::NodeHandle& nh_private)
 :nh_(nh),nh_private_(nh_private)
 {
+
+    //signal(SIGINT,&cConnection::siginthandler);
+
     //Initializing TCP and UDP sockets
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = inet_addr("192.168.1.101");
@@ -63,15 +66,15 @@ cConnection::cConnection (const ros::NodeHandle& nh, const ros::NodeHandle& nh_p
     //Initializing TCP and UDP sockets
     addr_udp.sin_family = AF_INET;
     addr_udp.sin_addr.s_addr = INADDR_ANY;
-    int port_udp = 15010;
+    int port_udp = 15040;
     addr_udp.sin_port=htons(port_udp);
     int connection=bind(this->socket_, (struct sockaddr *) &addr_udp,  sizeof(this->addr_udp));
     cout<<connection<<endl;
     //ros::Rate r (1000);
     //r.sleep();
-    usleep(500*1000);
+    usleep(1000*1000);
     //Handshake
-    char buffer[40];
+    unsigned char buffer[40];
     memset(buffer, 0, 40);
     char port[10];
     sprintf(port, "%d", port_udp);
@@ -85,9 +88,9 @@ cConnection::cConnection (const ros::NodeHandle& nh, const ros::NodeHandle& nh_p
     buffer[5]=0x7f;
     // std::string port_str(port);
     memcpy(buffer + 6, port, l);
-
+    cout<<buffer<<endl;
     //sending message
-    int ret=write(socket_tcp, buffer, l + 6);
+    int ret=send(socket_tcp, buffer, l + 6, 0);
     cout<<ret<<endl;
 
     //Publishing laser_data
@@ -120,33 +123,55 @@ cConnection::cConnection (const ros::NodeHandle& nh, const ros::NodeHandle& nh_p
     this->static_cameraTransform.header.stamp=ros::Time::now();
     this->static_broadcaster.sendTransform(static_cameraTransform);
 
-
+    cout<<"antes de crear conexion con camara"<<endl;
     //Camera
-   /* const string cameraUrl= "http://192.168.0.19/record/current.jpg";
+    static const string cameraUrl= "http://192.168.0.19/record/current.jpg";
     curl = curl_easy_init();
-    curl_easy_setopt(curl, CURLOPT_URL, cameraUrl.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &cConnection::write_data);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &cameraStream);*/
+    cout<<curl<<endl;
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 1);
+    if(curl){
+    int code2 =curl_easy_setopt(curl, CURLOPT_URL, "http://192.168.0.19/record/current.jpg");
+    //cout<<"url"<<code2<<endl;
+    int code=curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &cConnection::write_data);
+    //cout<<"write"<<code<<endl;
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &cameraStream);
+    }
 
 }
 
+/*cConnection::~cConnection(){
+
+}
+void cConnection::siginthandler(int param){cul
+    close(socket_tcp);
+    close(socket_);
+    printf("Closing connection");
+    exit(1);
+}*/
+
 size_t cConnection::write_data(char *ptr, size_t size, size_t nmemb, void *userdata) {
         std::ostringstream *stream = (std::ostringstream*)userdata;
+        cout<<stream<<endl;
         size_t count = size * nmemb;
+        cout<<count<<endl;
         stream->write(ptr, count);
+        //cout<<"despues de write"<<endl;
         return count;
 }
 
 
 void cConnection::readImage(void){
+    //cout<<"entro0"<<endl;
     data.clear();
     cameraStream.str("");
     cameraStream.clear();
-
+    //cout<<"entro1"<<endl;
+    //cout<<curl<<endl;
     res=curl_easy_perform(curl);
+    //cout<<"despues de res"<<endl;
     std::string strCameraStream = cameraStream.str();
     std::copy(strCameraStream.begin(), strCameraStream.end(), std::back_inserter(data));
-
+    //cout<<"entro a camara"<<endl;
     if(data.size() > 0){
                     cv::Mat data_mat = cv::Mat(data);
                     frame = cv::Mat(cv::imdecode(data_mat, 1));
@@ -171,6 +196,7 @@ void cConnection::readFromSocket(void){
     //cout<<"conectando"<<endl;
     //Reading from socket
     //valread=recv(this->socket_,message,1024,0);
+    //printf("sigue con la lectura\n");
     valread=recvfrom(this->socket_,message, 4096,0,  (struct sockaddr *) &inAddr, &sourceSize);
     cout<<valread<<endl;
     //this->decoMessage(message,valread);
@@ -179,7 +205,7 @@ void cConnection::readFromSocket(void){
 
     }else{
         cout<<message<<endl;
-        //this->decoMessage(message,valread);
+        this->decoMessage(message,valread);
     }
 }
 
@@ -188,25 +214,27 @@ void cConnection::decoMessage(char message [], int size){
     std::string encabezado_odom="POSE_VEL";
     std::string encabezado_laser="LASER";
     std::vector<float> vec;
-    //std::string str="$POSE_VEL|5.2,7.6,8.2,7.4,8.5";
     string comp= "|";
     string encabezado=str.substr(1,str.find(comp)-1);
     cout<<encabezado<<endl;
-    string variable = str.substr(str.find(comp)+1, str.length());
-    std::stringstream ss(variable);
-    int i=0;
-    while (ss.good()){
-       string substr;
-       getline(ss,substr,',');
-       vec.push_back(stof(substr));
-    }
-    for (i=0; i< vec.size(); i++)
-            std::cout << vec.at(i)<<std::endl;
+
+    /*for (i=0; i< vec.size(); i++)
+            std::cout << vec.at(i)<<std::endl;*/
    /* encabezado="LASER";
     for (i=0;i<360;i++){
         vec.push_back(1);
     }*/
     if(encabezado == encabezado_odom){
+        //cout<<"odom"<<endl;
+        cout<<ros::Time::now()<<endl;
+        string variable = str.substr(str.find(comp)+1, str.length());
+        std::stringstream ss(variable);
+        int i=0;
+        while (ss.good()){
+           string substr;
+           getline(ss,substr,',');
+           vec.push_back(stof(substr));
+        }
         //odom_base
         odom.header.frame_id="Doris/odom";
         odom.child_frame_id="Doris/cuerpo";
@@ -219,12 +247,27 @@ void cConnection::decoMessage(char message [], int size){
         odom.transform.rotation.y=quat.y();
         odom.transform.rotation.z=quat.z();
         odom.transform.rotation.w=quat.w();
+        //cout<<ros::Time::now()<<endl;
         odom.header.stamp=ros::Time::now();
         this->br.sendTransform(odom);
+
+        //topic
+
 
 
     }
     if (encabezado==encabezado_laser){
+        //cout<<"laser"<<endl;
+        //cout<<ros::Time::now()<<endl;
+        string variable = str.substr(str.find(comp)+1, str.length());
+        std::stringstream ss(variable);
+        int i=0;
+        while (ss.good()){
+           string substr;
+           getline(ss,substr,',');
+           vec.push_back(stof(substr));
+        }
+      //cout<<ros::Time::now()<<endl;
       scan.header.stamp=ros::Time::now();
       scan.header.frame_id="Doris/laser_link";
       scan.angle_min=PI;

@@ -41,6 +41,7 @@
 #include <visualization_msgs/Marker.h>
 #include <tf/tf.h>
 #include <detector/marcador.h>
+#include <opencv2/ccalib/omnidir.hpp>
 
 
 namespace amcl
@@ -103,6 +104,8 @@ class AMCLMarker : public AMCLSensor
   public:std::vector<geometry_msgs::TransformStamped> tf_cameras;
   private:image_geometry::PinholeCameraModel pin_model;
   private:sensor_msgs::CameraInfo cam_inf_ed;
+  private: cv::Mat camMatrix, distCoeff;
+  double xi;
 
   //temp data that is kept before observations are integrated to each particle (requried for beam skipping)
   private: int max_samples;

@@ -36,7 +36,10 @@
 #include <detector/messagedet.h>
 #include <particle_filter/particle_filter.h>
 #include <visualization_msgs/Marker.h>
+#include <opencv2/ccalib/omnidir.hpp>
 
+#define IMAGE_WIDTH 1812
+#define IMAGE_HEIGHT 679
 using namespace cv;
 
 
@@ -119,6 +122,71 @@ using namespace cv;
         this->publicar_mapa=nh1_.advertise<visualization_msgs::Marker> ("mapa",1);
         detector_subs=nh1_.subscribe<sensor_msgs::Image> ("DetectorNode/detector_output",1,&ParticleFilter::imageCallback,this);
         odom_subs=nh1_.subscribe<nav_msgs::Odometry> ("Doris/odom",1,&ParticleFilter::odomCallback,this);
+        camMatrix = cv::Mat(3, 3, CV_32F);
+                camMatrix.at<float>(0, 0) = IMAGE_WIDTH/2;
+                camMatrix.at<float>(0, 1) = 0.0;
+                camMatrix.at<float>(0, 2) = 0.0;
+                camMatrix.at<float>(1, 0) = 0.0;
+                camMatrix.at<float>(1, 1) = IMAGE_HEIGHT/2;
+                camMatrix.at<float>(1, 2) =0.0;
+                camMatrix.at<float>(2, 1) = 0.0;
+                camMatrix.at<float>(2, 2) = 1.0;
+       /* camMatrix = cv::Mat(3, 3, CV_32F);
+                camMatrix.at<float>(0, 0) = 8.5101024687735935e+02;
+                camMatrix.at<float>(0, 1) = -2.2255059056366439e-01;
+                camMatrix.at<float>(0, 2) = 6.5571465382877625e+02;
+                camMatrix.at<float>(1, 0) = 0.0;
+                camMatrix.at<float>(1, 1) = 8.5170243585411265e+02;;
+                camMatrix.at<float>(1, 2) = 5.1216084358475405e+02;
+                camMatrix.at<float>(2, 0) = 0.0;
+                camMatrix.at<float>(2, 1) = 0.0;
+                camMatrix.at<float>(2, 2) = 1.0;*/
+
+                distCoeff = cv::Mat(4, 1, CV_32F);
+                distCoeff.at<float>(0, 0) = 0.0;
+                distCoeff.at<float>(1, 0) = 0.0;
+                distCoeff.at<float>(2, 0) = 0.0;
+                distCoeff.at<float>(3, 0) = 0.0;
+
+                /*camMatrix = cv::Mat(3, 3, CV_32F);
+                        camMatrix.at<float>(0, 0) = 3.3148337972624245e+02;
+                        camMatrix.at<float>(0, 1) = 0;
+                        camMatrix.at<float>(0, 2) = 6.5050896530720797e+02;
+                        camMatrix.at<float>(1, 0) = 0.0;
+                        camMatrix.at<float>(1, 1) = 3.3296507853901846e+02;
+                        camMatrix.at<float>(1, 2) = 4.9324794942591592e+02;
+                        camMatrix.at<float>(2, 0) = 0.0;
+                        camMatrix.at<float>(2, 1) = 0.0;
+                        camMatrix.at<float>(2, 2) = 1.0;
+
+                        distCoeff = cv::Mat(4, 1, CV_32F);
+                        distCoeff.at<float>(0, 0) = -5.0278669230113635e-02;
+                        distCoeff.at<float>(1, 0) = 2.7927571053875219e-02;
+                        distCoeff.at<float>(2, 0) = -9.7303697830329119e-03;*/
+                camMatrix = cv::Mat(3, 3, CV_32F);
+                        camMatrix.at<float>(0, 0) = 8.5101024687735935e+02;
+                        camMatrix.at<float>(0, 1) = -2.2255059056366439e-01;
+                        camMatrix.at<float>(0, 2) = 6.5571465382877625e+02;
+                        camMatrix.at<float>(1, 0) = 0.0;
+                        camMatrix.at<float>(1, 1) = 8.5170243585411265e+02;;
+                        camMatrix.at<float>(1, 2) = 5.1216084358475405e+02;
+                        camMatrix.at<float>(2, 0) = 0.0;
+                        camMatrix.at<float>(2, 1) = 0.0;
+                        camMatrix.at<float>(2, 2) = 1.0;
+
+                        distCoeff = cv::Mat(4, 1, CV_32F);
+                        distCoeff.at<float>(0, 0) = -4.2648301140911193e-01;
+                        distCoeff.at<float>(1, 0) = 3.1105618959437248e-01;
+                        distCoeff.at<float>(2, 0) = -1.3775384616268102e-02;
+                distCoeff.at<float>(3, 0) = -1.9560559208606078e-03;
+                distCoeff.at<float>(3, 0) = 0;
+                xi = cv::Mat(1, 1, CV_32FC1);
+                xi.at<float>(0, 0) = 1.5861076761699640e+00;
+              /*  distCoeff = cv::Mat(4, 1, CV_32F);
+                distCoeff.at<float>(0, 0) = -4.2648301140911193e-01;
+                distCoeff.at<float>(1, 0) = 3.1105618959437248e-01;
+                distCoeff.at<float>(2, 0) = -1.3775384616268102e-02;
+                distCoeff.at<float>(3, 0) = -1.9560559208606078e-03;*/
 
         this->loadTFCameras(cameras);
         this->LoadMap(maps,sectors,IDs,Centros);
@@ -139,12 +207,17 @@ using namespace cv;
 
     void ParticleFilter::imageCallback(const sensor_msgs::ImageConstPtr& msg){
         imagen_filter = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
-        cout<<"Callback"<<endl;
+        //cout<<"Callback"<<endl;
+        cv::Size t =imagen_filter.size();
+        cout<<t.width<<" "<<t.height<<endl;
         imshow("Callback",imagen_filter);
         waitKey(30);
 
     }
     void ParticleFilter::LoadCameraInfo(void){
+        switch (simulation){
+            case 1:
+        {
         sensor_msgs::CameraInfo cam_inf_ed;
         cam_inf_ed.header.frame_id="Doris/cam1";
         cam_inf_ed.height=679;
@@ -165,12 +238,34 @@ using namespace cv;
         cam_inf_ed.roi.width=0;
 
         this->pin_model.fromCameraInfo(cam_inf_ed);
+        break;
+        }
+        case 0:
+            sensor_msgs::CameraInfo cam_inf_ed;
+            cam_inf_ed.header.frame_id="Doris/cam1";
+            cam_inf_ed.height=679;
+            cam_inf_ed.width=604;
+            cam_inf_ed.distortion_model="plumb_bob";
+            double Da[5]={-0.2601958609577983, 0.05505240192232372, 0.0, -0.0045449850126361765, 0.0};
+            boost::array<double, 9ul> K={ {174.746839097, 0.0, 906.0, 0.0, 174.746839097, 339.5, 0.0, 0.0, 1.0} } ;
+            boost::array<double, 9ul> R={ {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0} };
+            boost::array<double, 12ul> P={ {174.64077512103418, 0.0, 906.0, 0.0, 0.0, 174.64077512103418, 339.5, 0.0, 0.0, 0.0, 1.0, 0.0} };
+            std::vector<double> D(Da,Da +(sizeof(Da)/sizeof(Da[0])));
+            cam_inf_ed.D=D;
+            cam_inf_ed.K=K;
+            cam_inf_ed.R=R;
+            cam_inf_ed.P=P;
+            cam_inf_ed.binning_x=0.0;
+            cam_inf_ed.binning_y=0.0;
+            cam_inf_ed.roi.height=0;
+            cam_inf_ed.roi.width=0;
+        }
     }
 
 
 void ParticleFilter::LoadMap(std::vector<int>maps,std::vector<int>sectors,std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros){
 
-    this->pub_map.header.frame_id="ground_plane__link";
+    this->pub_map.header.frame_id="Doris/cuerpo";
     this->pub_map.pose.orientation.w= 1.0;
     this->pub_map.scale.x=0.1;
     this->pub_map.scale.y=0.1;
@@ -218,6 +313,8 @@ void ParticleFilter::LoadMap(std::vector<int>maps,std::vector<int>sectors,std::v
             Marker.setSectorId(sectors[i]);
             Marker.setMapId(maps[i]);
             this->map.push_back(Marker);
+
+            this->publicar_mapa.publish(pub_map);
 
 
 
@@ -308,42 +405,63 @@ std::vector<cv::Point2d> ParticleFilter::Proyectar(visualization_msgs::Marker ca
 
 std::vector<geometry_msgs::Point> ParticleFilter::ObservationModel (Marcador Marca, geometry_msgs::Pose CamaraMundo){
     //Pose CAM;
-    tf::Transform MundTrob, invMundTrob,RobTCam,invRobotTCam;
+    tf::Transform MundTrob, invMundTrob,RobTCam,invRobotTCam, invRealSimu;
     tf::Quaternion RotCam;
     //From Robot base to camera
-    RotCam.setRPY(-M_PI/2,0,-M_PI/2);//Pich de M_PI/2
-    RobTCam.setOrigin(tf::Vector3(0,0,1.3925));
+    //RotCam.setRPY(-M_PI/2,0,-M_PI/2);
+    RotCam.setRPY(0,0,-M_PI/2);
+    //Pich de M_PI/2
+    //RobTCam.setOrigin(tf::Vector3(0,0,1.3925));
+    RobTCam.setOrigin(tf::Vector3(-0.26,0,1.41));
     RobTCam.setRotation(RotCam);
     tf::Quaternion QMundRCam (CamaraMundo.orientation.x,CamaraMundo.orientation.y,CamaraMundo.orientation.z,CamaraMundo.orientation.w);
     tf::Vector3 Trasl1 (CamaraMundo.position.x,CamaraMundo.position.y,CamaraMundo.position.z);
+
+    //Rotate for simulation
+    tf::Transform simuReal;
+    tf::Quaternion RotCamREal;
+    simuReal.setOrigin(tf::Vector3(0,0,0));
+    RotCamREal.setRPY(0,0,M_PI);
+     simuReal.setRotation(RotCamREal);
+    //total=RotCam * simuReal;
     //From World to Robot
     MundTrob.setRotation(QMundRCam);
     MundTrob.setOrigin(Trasl1);
     //Inverse the transformation--> inversa del mundo a la camara
     invRobotTCam=RobTCam.inverse();
     invMundTrob = MundTrob.inverse();
-    geometry_msgs::TransformStamped MundTrobSt, RobotTCamSt;
+    invRealSimu = simuReal.inverse();
+    geometry_msgs::TransformStamped MundTrobSt, RobotTCamSt, simuRealSt;
     MundTrobSt.header.frame_id="ground_plane__link";
     MundTrobSt.child_frame_id="EstimatedPose";
-    RobotTCamSt.header.frame_id="EstimatedPose";
+    RobotTCamSt.header.frame_id="Doris/cuerpo";
     RobotTCamSt.child_frame_id="camera_link";
+    simuRealSt.header.frame_id="camera_link";
+    simuRealSt.child_frame_id="camera_real";
     transformTFToMsg(MundTrob,MundTrobSt.transform);
     transformTFToMsg(RobTCam,RobotTCamSt.transform);
+    transformTFToMsg(simuReal,simuRealSt.transform);
+
+    //Rotate for simulation
+
     this->br.sendTransform(MundTrobSt);
     this->br.sendTransform(RobotTCamSt);
+    this->br.sendTransform(simuRealSt);
 
     //Pose Transformation
-    geometry_msgs::TransformStamped invMundTrobStamped,invRobotTCamSt;
+    geometry_msgs::TransformStamped invMundTrobStamped,invRobotTCamSt,invSimuRealSt;
     transformTFToMsg(invMundTrob,invMundTrobStamped.transform);
     transformTFToMsg(invRobotTCam,invRobotTCamSt.transform);
+    transformTFToMsg(invRealSimu,invSimuRealSt.transform);
     std::vector<geometry_msgs::Point> RelativaCorners,PoseWorld;
     //std::vector<geometry_msgs::Transform> Corners = Marca.getTransformCorners();
     PoseWorld=Marca.getPoseWorld();
     for (int i=0;i<4;i++){
-            geometry_msgs::PointStamped CornerRelPose,Inter,WorldPose;
+            geometry_msgs::PointStamped CornerRelPose,Inter,WorldPose,Inter2;
             WorldPose.point=PoseWorld[i];
              tf2::doTransform(WorldPose,Inter,invMundTrobStamped);
-             tf2::doTransform(Inter,CornerRelPose,invRobotTCamSt);
+             tf2::doTransform(Inter,Inter2,invRobotTCamSt);
+             tf2::doTransform(Inter2,CornerRelPose,invSimuRealSt);
             RelativaCorners.push_back(CornerRelPose.point);
 
         }
@@ -360,43 +478,78 @@ void ParticleFilter::ErrorCalc(){
     if(!(imagen_filter.empty())){
             for (int j=0;j<this->map.size();j++){
     geometry_msgs::Pose Supuesta;
-    Supuesta.position.x=23.212226;
-    Supuesta.position.y=3.826968;
+    Supuesta.position.x=0.0;
+    Supuesta.position.y=0.0;
     Supuesta.position.z=0.0;
     EstimatedPose.position.z=0.0;
     tf::Quaternion Quat;
     tf::Matrix3x3 Mat;
     geometry_msgs::Quaternion QuatMs;
-    Mat.setRPY(0,0,-0.007302);
+    Mat.setRPY(0,0,0);
     Mat.getRotation(Quat);
     tf::quaternionTFToMsg (Quat,QuatMs);
     Supuesta.orientation=QuatMs;
-    std::vector<cv::Point2d> proyeccion;
-    std::vector<geometry_msgs::Point> Relative=this->ObservationModel(this->map[j],EstimatedPose);
+    //std::vector<cv::Point2d> proyeccion;
+    std::vector<geometry_msgs::Point> Relative=this->ObservationModel(this->map[j],Supuesta);
     //cout<<"AfterObsModel"<<endl;
     this->map[j].setRelativePose(Relative);
     visualization_msgs::Marker CornersRelativePose;
-    CornersRelativePose.header.frame_id="camera_link";
+    CornersRelativePose.scale.x = 0.1;
+    CornersRelativePose.scale.y = 0.1;
+    CornersRelativePose.scale.z = 0.1;
+    CornersRelativePose.color.a = 1.0; // Don't forget to set the alpha!
+    CornersRelativePose.color.r = 0.0;
+    CornersRelativePose.color.g = 1.0;
+    CornersRelativePose.color.b = 0.0;
+    CornersRelativePose.ns= "spheres";
+    CornersRelativePose.id = 0;
+    CornersRelativePose.type = visualization_msgs::Marker::SPHERE_LIST;
+    CornersRelativePose.action= visualization_msgs::Marker::ADD;
+    CornersRelativePose.color.r = 1.0f;
+
+    CornersRelativePose.header.frame_id="camera_real";
     for (int i=0;i<4;i++){
             geometry_msgs::Point position = Relative[i];
             geometry_msgs::PointStamped msg;
-            msg.header.frame_id="camera_link";
+            msg.header.frame_id="camera_real";
             msg.point=Relative[i];
             CornersRelativePose.points.push_back(Relative[i]);
         }
    this->publicar.publish(CornersRelativePose);
-   proyeccion=Proyectar(CornersRelativePose,image_width,num_cam);
-   line (this->imagen_filter,proyeccion[0], proyeccion[1],Scalar(0,0,255),1);
-   line (this->imagen_filter,proyeccion[1], proyeccion[2],Scalar(0,0,255),1);
-   line (this->imagen_filter,proyeccion[2], proyeccion[3],Scalar(0,0,255),1);
-   line (this->imagen_filter,proyeccion[3], proyeccion[0],Scalar(0,0,255),1);
+   //proyeccion=Proyectar(CornersRelativePose,image_width,num_cam);
+
+    cv::Mat rvec(3,1,cv::DataType<double>::type);
+    cv::Mat tvec(3,1,cv::DataType<double>::type);
+    rvec.at<double>(0)=0.0;
+    rvec.at<double>(1)=0.0;
+    rvec.at<double>(2)=0.0;
+    tvec.at<double>(0)=0.0;
+    tvec.at<double>(1)=0.0;
+    tvec.at<double>(2)=0.0;
+    std::vector<cv::Point3f>rel;
+    for (int i=0;i<Relative.size();i++){
+        cv::Point3d punto;
+        punto.x=Relative[i].x;
+        punto.y=Relative[i].y;
+        punto.z=Relative[i].z;
+        rel.push_back(punto);
+    }
+    std::vector<cv::Point2f>proyeccion;
+    //cout<<"antes de proyectar"<<endl;
+    double x= 1.5861076761699640e+00;
+    cv::omnidir::projectPoints(rel,proyeccion,rvec,tvec,camMatrix,x,distCoeff);
+    //cout<<proyeccion[0].x<<" "<<proyeccion[0].y<<endl;
+   line (this->imagen_filter,proyeccion[0], proyeccion[1],Scalar(0,0,255),4);
+   line (this->imagen_filter,proyeccion[1], proyeccion[2],Scalar(0,0,255),4);
+   line (this->imagen_filter,proyeccion[2], proyeccion[3],Scalar(0,0,255),4);
+   line (this->imagen_filter,proyeccion[3], proyeccion[0],Scalar(0,0,255),4);
 
    int ID=this->map[j].getMarkerID();
    std::string etiqueta ;
    ostringstream convert;
    convert<<ID;
    etiqueta=convert.str();
-   putText(this->imagen_filter, etiqueta, proyeccion[0],CV_FONT_HERSHEY_COMPLEX,0.8,Scalar(0,0,255));
+   putText(this->imagen_filter, etiqueta, proyeccion[0],CV_FONT_HERSHEY_COMPLEX,0.8,Scalar(0,255,0));
         }
 
    imshow("Prueba",this->imagen_filter);

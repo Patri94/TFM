@@ -88,6 +88,8 @@ public:
     void detectorTask(void);
     std::vector<Marcador> orderDetection(std::vector<Marcador> detection);
     void undistortPoints(cv::InputArray distorted, cv::OutputArray undistorted, cv::InputArray K, cv::InputArray D, cv::InputArray R, cv::InputArray P);
+    void initUndistortRectifyMap(cv::InputArray K, cv::InputArray D, cv::InputArray xi, cv::InputArray R, cv::InputArray P, const cv::Size& size,
+            int m1type, cv::OutputArray map1, cv::OutputArray map2, int flags);
 
 };
 

@@ -106,7 +106,7 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
   std::vector<float> z;
   self = (AMCLMarker*) data->sensor;
   std::vector<Marcador> observation=data->markers_obs;
-  cout<<"landa in likelihood"<<self->landa<<endl;
+  //cout<<"landa in likelihood"<<self->landa<<endl;
   if (!self->image_filter.empty()){
 
   total_weight = 0.0;
@@ -119,23 +119,12 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
 
             if(self->map[j].getMarkerID()==observation[k].getMarkerID() && self->map[j].getSectorID()==observation[k].getSectorID() && self->map[j].getMapID()==observation[k].getMapID()){
                 //cout<<"+1"<<endl;
-                waitKey();
+                //waitKey();
                 detected_from_map.push_back(self->map[j]);
             }
 
         }
   }
-  //cout<<"in map"<<detected_from_map.size()<<endl;
-  /*for (int i=0;i<observation.size();i++){
-      cout<<"map"<<observation[i].getMapID()<<endl;
-      cout<<"sector"<<observation[i].getSectorID()<<endl;
-      cout<<"ID"<<observation[i].getMarkerID()<<endl;
-  }*/
-  //waitKey();
-  //cout<<"map"<<detected_from_map.size()<<endl;
-  //cout<<"observed"<<observation.size()<<endl;
-  //cout<<"camaras"<<self->num_cam<<endl;
-  //cout<<"imagen"<<self->image_width<<endl;
   for (i=0;i< set->sample_count; i++){
       //cout<<"after 1st for"<<endl;
       sample=set-> samples + i;
@@ -170,42 +159,36 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           std::vector<geometry_msgs::Point> relative_to_cam=self->CalculateRelativePose(detected_from_map[j],sample_pose);
           //cout<<"after relative pose"<<endl;
            std::vector<cv::Point2d> projection;
-           cout<<"simulation"<<(self->simulation)<<endl;
-          switch (self->simulation){
-            case 1:
-                cout<<"simu"<<endl;
-                projection=self->projectPoints(relative_to_cam);
-              break;
-            case 0:
-          {
-              cout<<"real"<<endl;
-              for (int i=0; i< relative_to_cam.size(); i++){
-                  cv::Point3d Coord;
-                  Coord.x=relative_to_cam[i].x;
-                  Coord.y=relative_to_cam[i].y;
-                  Coord.z=relative_to_cam[i].z;
-                  projection.push_back(self->pin_model.project3dToPixel(Coord));
-              }
-              break;
-          }
-          default:
-              break;
+           //if (self->simulation == 1){
+           projection=self->projectPoints(relative_to_cam);
+         //  }
+         /*  if(self->simulation == 0){
+               std::vector<cv::Point3f>rel;
+               for (int i=0; i< relative_to_cam.size(); i++){
+                                 cv::Point3d Coord;
+                                 Coord.x=relative_to_cam[i].x;
+                                 Coord.y=relative_to_cam[i].y;
+                                 Coord.z=relative_to_cam[i].z;
+                                 rel.push_back(Coord);
 
+                             }
+               cv::Mat rvec(3,1,cv::DataType<double>::type);
+               cv::Mat tvec(3,1,cv::DataType<double>::type);
+               rvec.at<double>(0)=0.0;
+               rvec.at<double>(1)=0.0;
+               rvec.at<double>(2)=0.0;
+               tvec.at<double>(0)=0.0;
+               tvec.at<double>(1)=0.0;
+               tvec.at<double>(2)=0.0;
 
-          }
-          //cout<<projection.size()<<endl;
-        /*  line (self->image_filter,projection[0], projection[1],Scalar(0,0,255),1);
-          line (self->image_filter,projection[1], projection[2],Scalar(0,0,255),1);
-          line (self->image_filter,projection[2], projection[3],Scalar(0,0,255),1);
-          line (self->image_filter,projection[3], projection[0],Scalar(0,0,255),1);
-          imshow("Proyeccion",self->image_filter);
-          waitKey(30);*/
-          //cout<<"after image"<<endl;
+           cv::omnidir::projectPoints(rel,projection,rvec,tvec,self->camMatrix,self->xi,self->distCoeff);
+           }*/
+
           //Calculate mean error in pixels
           std::vector<cv::Point2f> Puntos=observation[j].getMarkerPoints();
           //Compute probability for every corner
           z=self->calculateError(observation[j].getMarkerPoints(),projection);
-
+          float ztot=std::accumulate(z.begin(), z.end(), 0.0);
           for (int i=0;i<4;i++){
               pz=0.0;
               //Opción1:Gaussian model
@@ -215,8 +198,9 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
              // cout<<"pz: "<<pz<<endl;
               //p+=pz*pz*pz;
               //Opción 2:Distribución exponencial (Humanoid P12)
-              pz+=z[i];
-              p+=self->landa*exp(-self->landa*pz);
+              //pz+=z[i];
+              pz+=self->landa*exp(-self->landa*ztot);
+              p+=pz*pz*pz;
           }
 
           if (pz>1.0){
@@ -319,56 +303,47 @@ std::vector<cv::Point2d> AMCLMarker::projectPoints(std::vector<geometry_msgs::Po
 
 void AMCLMarker::LoadCameraInfo(void){
     sensor_msgs::CameraInfo cam_inf_ed;
+    //if (this->simulation == 1){
+    cam_inf_ed.header.frame_id="Cam1";
+    cam_inf_ed.height=679;
+    cam_inf_ed.width=604;
+    cam_inf_ed.distortion_model="plumb_bob";
+    double Da[5]={-0.2601958609577983, 0.05505240192232372, 0.0, -0.0045449850126361765, 0.0};
+    boost::array<double, 9ul> K={ {174.746839097, 0.0, 906.0, 0.0, 174.746839097, 339.5, 0.0, 0.0, 1.0} } ;
+    boost::array<double, 9ul> R={ {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0} };
+    boost::array<double, 12ul> P={ {174.64077512103418, 0.0, 906.0, 0.0, 0.0, 174.64077512103418, 339.5, 0.0, 0.0, 0.0, 1.0, 0.0} };
+    std::vector<double> D(Da,Da +(sizeof(Da)/sizeof(Da[0])));
+    cam_inf_ed.D=D;
+    cam_inf_ed.K=K;
+    cam_inf_ed.R=R;
+    cam_inf_ed.P=P;
+    cam_inf_ed.binning_x=0.0;
+    cam_inf_ed.binning_y=0.0;
+    cam_inf_ed.roi.height=0;
+    cam_inf_ed.roi.width=0;
+    /*}
+    if (this->simulation == 0){
+        camMatrix = cv::Mat(3, 3, CV_32F);
+                camMatrix.at<float>(0, 0) = 8.5101024687735935e+02;
+                camMatrix.at<float>(0, 1) = -2.2255059056366439e-01;
+                camMatrix.at<float>(0, 2) = 6.5571465382877625e+02;
+                camMatrix.at<float>(1, 0) = 0.0;
+                camMatrix.at<float>(1, 1) = 8.5170243585411265e+02;;
+                camMatrix.at<float>(1, 2) = 5.1216084358475405e+02;
+                camMatrix.at<float>(2, 0) = 0.0;
+                camMatrix.at<float>(2, 1) = 0.0;
+                camMatrix.at<float>(2, 2) = 1.0;
 
-    switch (this->simulation){
-        case 1:
-    {
-            cam_inf_ed.header.frame_id="Cam1";
-            cam_inf_ed.height=679;
-            cam_inf_ed.width=604;
-            cam_inf_ed.distortion_model="plumb_bob";
-            double Da[5]={-0.2601958609577983, 0.05505240192232372, 0.0, -0.0045449850126361765, 0.0};
-            boost::array<double, 9ul> K={ {174.746839097, 0.0, 906.0, 0.0, 174.746839097, 339.5, 0.0, 0.0, 1.0} } ;
-            boost::array<double, 9ul> R={ {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0} };
-            boost::array<double, 12ul> P={ {174.64077512103418, 0.0, 906.0, 0.0, 0.0, 174.64077512103418, 339.5, 0.0, 0.0, 0.0, 1.0, 0.0} };
-            std::vector<double> D(Da,Da +(sizeof(Da)/sizeof(Da[0])));
-            cam_inf_ed.D=D;
-            cam_inf_ed.K=K;
-            cam_inf_ed.R=R;
-            cam_inf_ed.P=P;
-            cam_inf_ed.binning_x=0.0;
-            cam_inf_ed.binning_y=0.0;
-            cam_inf_ed.roi.height=0;
-            cam_inf_ed.roi.width=0;
-            break;
+                distCoeff = cv::Mat(4, 1, CV_32F);
+                distCoeff.at<float>(0, 0) = -4.2648301140911193e-01;
+                distCoeff.at<float>(1, 0) = 3.1105618959437248e-01;
+                distCoeff.at<float>(2, 0) = -1.3775384616268102e-02;
+        distCoeff.at<float>(3, 0) = -1.9560559208606078e-03;
+        distCoeff.at<float>(3, 0) = 0;
+
+        xi = 1.5861076761699640e+00;
     }
-
-        case 0:
-    {
-            cam_inf_ed.header.frame_id="Doris/cam1_link";
-            cam_inf_ed.height=679;
-            cam_inf_ed.width=604;
-            cam_inf_ed.distortion_model="plumb_bob";
-            double Dar[5]={-0.2601958609577983, 0.05505240192232372, 0.0, -0.0045449850126361765, 0.0};
-            boost::array<double, 9ul> Kr={ {174.746839097, 0.0, 906.0, 0.0, 174.746839097, 339.5, 0.0, 0.0, 1.0} } ;
-            boost::array<double, 9ul> Rr={ {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0} };
-            boost::array<double, 12ul> Pr={ {174.64077512103418, 0.0, 906.0, 0.0, 0.0, 174.64077512103418, 339.5, 0.0, 0.0, 0.0, 1.0, 0.0} };
-            std::vector<double> Dr(Dar,Dar +(sizeof(Dar)/sizeof(Dar[0])));
-            cam_inf_ed.D=Dr;
-            cam_inf_ed.K=Kr;
-            cam_inf_ed.R=Rr;
-            cam_inf_ed.P=Pr;
-            cam_inf_ed.binning_x=0.0;
-            cam_inf_ed.binning_y=0.0;
-            cam_inf_ed.roi.height=0;
-            cam_inf_ed.roi.width=0;
-            break;
-    }
-        default :
-            break;
-    }
-
-
+*/
 
 
     this->pin_model.fromCameraInfo(cam_inf_ed);
@@ -381,20 +356,23 @@ std::vector<geometry_msgs::Point> AMCLMarker::CalculateRelativePose (Marcador Ma
     tf::Quaternion RotCam;
     //From Robot base to camera
     RotCam.setRPY(-M_PI/2,0,-M_PI/2);//Pitch de M_PI/2
-    switch (this->simulation){
+  /*  switch (this->simulation){
     case 1:
     {
+        cout<<"simuproy"<<endl;
     RobTCam.setOrigin(tf::Vector3(0,0,1.3925));
     break;
     }
     case 0:
-        cout<<"realrelative"<<endl;    {
+        cout<<"realrelative"<<endl;
+    {
         RobTCam.setOrigin(tf::Vector3(-0.26,0,1.46));
         break;
     }
     default:
         break;
-    }
+    }*/
+    RobTCam.setOrigin(tf::Vector3(0,0,1.3925));
     RobTCam.setRotation(RotCam);
     tf::Quaternion QMundRCam (CamaraMundo.orientation.x,CamaraMundo.orientation.y,CamaraMundo.orientation.z,CamaraMundo.orientation.w);
     tf::Vector3 Trasl1 (CamaraMundo.position.x,CamaraMundo.position.y,CamaraMundo.position.z);
