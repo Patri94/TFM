@@ -412,7 +412,7 @@ std::vector<geometry_msgs::Point> ParticleFilter::ObservationModel (Marcador Mar
     RotCam.setRPY(0,0,-M_PI/2);
     //Pich de M_PI/2
     //RobTCam.setOrigin(tf::Vector3(0,0,1.3925));
-    RobTCam.setOrigin(tf::Vector3(-0.26,0,1.41));
+    RobTCam.setOrigin(tf::Vector3(-0.26,0,1.415));
     RobTCam.setRotation(RotCam);
     tf::Quaternion QMundRCam (CamaraMundo.orientation.x,CamaraMundo.orientation.y,CamaraMundo.orientation.z,CamaraMundo.orientation.w);
     tf::Vector3 Trasl1 (CamaraMundo.position.x,CamaraMundo.position.y,CamaraMundo.position.z);
@@ -550,6 +550,9 @@ void ParticleFilter::ErrorCalc(){
    convert<<ID;
    etiqueta=convert.str();
    putText(this->imagen_filter, etiqueta, proyeccion[0],CV_FONT_HERSHEY_COMPLEX,0.8,Scalar(0,255,0));
+    putText(this->imagen_filter, "1", proyeccion[1],CV_FONT_HERSHEY_COMPLEX,0.8,Scalar(0,255,0));
+    putText(this->imagen_filter, "2", proyeccion[2],CV_FONT_HERSHEY_COMPLEX,0.8,Scalar(0,255,0));
+    putText(this->imagen_filter, "3", proyeccion[3],CV_FONT_HERSHEY_COMPLEX,0.8,Scalar(0,255,0));
         }
 
    imshow("Prueba",this->imagen_filter);

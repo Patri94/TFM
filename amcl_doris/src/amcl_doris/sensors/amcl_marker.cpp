@@ -40,11 +40,12 @@ using namespace amcl;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Default constructor
-AMCLMarker::AMCLMarker() : AMCLSensor()
+AMCLMarker::AMCLMarker(int simualtion) : AMCLSensor()
 
 {
 
   //this->map = map;
+  this->simulation=simulation;
   this->LoadCameraInfo();
 
 
@@ -94,7 +95,7 @@ bool AMCLMarker::UpdateSensor(pf_t *pf, AMCLSensorData *data)
 
 double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* set)
 {
-  //cout<<"in particle filter"<<endl;
+  cout<<"in particle filter"<<endl;
 
   AMCLMarker *self;
 
@@ -159,12 +160,16 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           std::vector<geometry_msgs::Point> relative_to_cam=self->CalculateRelativePose(detected_from_map[j],sample_pose);
           //cout<<"after relative pose"<<endl;
            std::vector<cv::Point2d> projection;
-           //if (self->simulation == 1){
+           if (self->simulation == 1){
+               //cout<<"simu"<<endl;
            projection=self->projectPoints(relative_to_cam);
-         //  }
-         /*  if(self->simulation == 0){
+            }
+          if(self->simulation == 0){
+              //cout<<"real"<<endl;
                std::vector<cv::Point3f>rel;
+               //cout<<"llego"<<endl;
                for (int i=0; i< relative_to_cam.size(); i++){
+                   cout<<"llegodentro"<<endl;
                                  cv::Point3d Coord;
                                  Coord.x=relative_to_cam[i].x;
                                  Coord.y=relative_to_cam[i].y;
@@ -172,6 +177,8 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
                                  rel.push_back(Coord);
 
                              }
+               std::vector<cv::Point2f> imagePoints;
+               cout<<"llego"<<endl;
                cv::Mat rvec(3,1,cv::DataType<double>::type);
                cv::Mat tvec(3,1,cv::DataType<double>::type);
                rvec.at<double>(0)=0.0;
@@ -180,9 +187,17 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
                tvec.at<double>(0)=0.0;
                tvec.at<double>(1)=0.0;
                tvec.at<double>(2)=0.0;
+               cout<<"antes de proyectar"<<endl;
+               cout<<rel.size()<<endl;
 
-           cv::omnidir::projectPoints(rel,projection,rvec,tvec,self->camMatrix,self->xi,self->distCoeff);
-           }*/
+           cv::omnidir::projectPoints(rel,imagePoints,rvec,tvec,self->camMatrix,self->xi,self->distCoeff);
+           cout<<imagePoints.size()<<endl;
+           cout<<"despues de proyectar1"<<endl;
+           for(int i=0; i<imagePoints.size();i++){
+                projection.push_back( cv::Point2d( (double)imagePoints[i].x, (double)imagePoints[i].y  ) );
+           }
+           cout<<"despues de proyectar"<<endl;
+           }
 
           //Calculate mean error in pixels
           std::vector<cv::Point2f> Puntos=observation[j].getMarkerPoints();
@@ -203,9 +218,9 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
               p+=pz*pz*pz;
           }
 
-          if (pz>1.0){
+        /*  if (pz>1.0){
               cout<<"mayor"<<endl;
-          }
+          }*/
 
       }
       sample->weight *= self->marker_coeff * p;
@@ -223,7 +238,7 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
 std::vector<float> AMCLMarker::calculateError(std::vector<cv::Point2f> projection_detected, std::vector<cv::Point2d> projection_map){
 
     //normalizing error with width and height of image.
-    float image_height=679;
+    //float image_height=679;
 
     std::vector<float> errorv;
     for (int i=0;i<4;i++){
@@ -321,29 +336,29 @@ void AMCLMarker::LoadCameraInfo(void){
     cam_inf_ed.binning_y=0.0;
     cam_inf_ed.roi.height=0;
     cam_inf_ed.roi.width=0;
-    /*}
-    if (this->simulation == 0){
-        camMatrix = cv::Mat(3, 3, CV_32F);
-                camMatrix.at<float>(0, 0) = 8.5101024687735935e+02;
-                camMatrix.at<float>(0, 1) = -2.2255059056366439e-01;
-                camMatrix.at<float>(0, 2) = 6.5571465382877625e+02;
-                camMatrix.at<float>(1, 0) = 0.0;
-                camMatrix.at<float>(1, 1) = 8.5170243585411265e+02;;
-                camMatrix.at<float>(1, 2) = 5.1216084358475405e+02;
-                camMatrix.at<float>(2, 0) = 0.0;
-                camMatrix.at<float>(2, 1) = 0.0;
-                camMatrix.at<float>(2, 2) = 1.0;
+   //}
+   //if (this->simulation == 0){
+    camMatrix = cv::Mat(3, 3, CV_32F);
+    camMatrix.at<float>(0, 0) = 8.5101024687735935e+02;
+    camMatrix.at<float>(0, 1) = -2.2255059056366439e-01;
+    camMatrix.at<float>(0, 2) = 6.5571465382877625e+02;
+    camMatrix.at<float>(1, 0) = 0.0;
+    camMatrix.at<float>(1, 1) = 8.5170243585411265e+02;;
+    camMatrix.at<float>(1, 2) = 5.1216084358475405e+02;
+    camMatrix.at<float>(2, 0) = 0.0;
+    camMatrix.at<float>(2, 1) = 0.0;
+    camMatrix.at<float>(2, 2) = 1.0;
 
-                distCoeff = cv::Mat(4, 1, CV_32F);
-                distCoeff.at<float>(0, 0) = -4.2648301140911193e-01;
-                distCoeff.at<float>(1, 0) = 3.1105618959437248e-01;
-                distCoeff.at<float>(2, 0) = -1.3775384616268102e-02;
-        distCoeff.at<float>(3, 0) = -1.9560559208606078e-03;
-        distCoeff.at<float>(3, 0) = 0;
+    distCoeff = cv::Mat(4, 1, CV_32F);
+    distCoeff.at<float>(0, 0) = -4.2648301140911193e-01;
+    distCoeff.at<float>(1, 0) = 3.1105618959437248e-01;
+    distCoeff.at<float>(2, 0) = -1.3775384616268102e-02;
+    distCoeff.at<float>(3, 0) = -1.9560559208606078e-03;
+    distCoeff.at<float>(3, 0) = 0;
 
-        xi = 1.5861076761699640e+00;
-    }
-*/
+    xi=1.5861076761699640e+00;
+
+   // }
 
 
     this->pin_model.fromCameraInfo(cam_inf_ed);
@@ -355,24 +370,26 @@ std::vector<geometry_msgs::Point> AMCLMarker::CalculateRelativePose (Marcador Ma
     tf::Transform MundTrob, invMundTrob,RobTCam,invRobotTCam;
     tf::Quaternion RotCam;
     //From Robot base to camera
-    RotCam.setRPY(-M_PI/2,0,-M_PI/2);//Pitch de M_PI/2
-  /*  switch (this->simulation){
+   //Pitch de M_PI/2
+   switch (this->simulation){
     case 1:
     {
         cout<<"simuproy"<<endl;
+     RotCam.setRPY(-M_PI/2,0,-M_PI/2);
     RobTCam.setOrigin(tf::Vector3(0,0,1.3925));
     break;
     }
     case 0:
         cout<<"realrelative"<<endl;
     {
-        RobTCam.setOrigin(tf::Vector3(-0.26,0,1.46));
+        RotCam.setRPY(0,0,-M_PI/2);
+        RobTCam.setOrigin(tf::Vector3(-0.26,0,1.41));
         break;
     }
     default:
         break;
-    }*/
-    RobTCam.setOrigin(tf::Vector3(0,0,1.3925));
+    }
+    //RobTCam.setOrigin(tf::Vector3(0,0,1.3925));
     RobTCam.setRotation(RotCam);
     tf::Quaternion QMundRCam (CamaraMundo.orientation.x,CamaraMundo.orientation.y,CamaraMundo.orientation.z,CamaraMundo.orientation.w);
     tf::Vector3 Trasl1 (CamaraMundo.position.x,CamaraMundo.position.y,CamaraMundo.position.z);
@@ -410,6 +427,7 @@ std::vector<geometry_msgs::Point> AMCLMarker::CalculateRelativePose (Marcador Ma
 
         }
     //cout<<"Tengo la posicion relativa"<<endl;
+    cout<<"salgo"<<endl;
     return RelativaCorners;
 
 

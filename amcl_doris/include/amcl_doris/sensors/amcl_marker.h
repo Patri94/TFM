@@ -19,8 +19,8 @@
  */
 ///////////////////////////////////////////////////////////////////////////
 //
-// Desc: LASER sensor model for AMCL
-// Author: Andrew Howard
+// Desc:  Camera model for AMCL
+// Author: Patricia Javierre
 // Date: 17 Aug 2003
 // CVS: $Id: amcl_laser.h 6443 2008-05-15 19:46:11Z gerkey $
 //
@@ -69,7 +69,7 @@ class AMCLMarkerData : public AMCLSensorData
 class AMCLMarker : public AMCLSensor
 {
   // Default constructor
-  public: AMCLMarker();
+  public: AMCLMarker(int simulation);
 
   public: virtual ~AMCLMarker();
 
@@ -95,7 +95,7 @@ class AMCLMarker : public AMCLSensor
 
   // Current data timestamp
   private: double time;
-  public:float  marker_width, num_cam,marker_height,image_width;
+  public:float  marker_width, num_cam,marker_height,image_width,image_height;
 
   // The marker map
   public: std::vector<Marcador> map;

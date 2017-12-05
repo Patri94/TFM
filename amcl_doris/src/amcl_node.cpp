@@ -59,6 +59,7 @@
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <std_msgs/Float64MultiArray.h>
+#include <std_msgs/Float64.h>
 #include <amcl_doris/pose_error.h>
 
 
@@ -295,9 +296,9 @@ class AmclNode
     //For Camera PF
     bool marker_update;
     geometry_msgs::Pose EstimatedPose,Cam1,Cam2,Cam3;
-    ros::Publisher publicar,publicar_cam1,publicar_cam2,publicar_cam3,publicar_mapa,error_pub,path_pub_r,path_pub_out;
-    ros::Subscriber detector_subs, corners_subs,ground_truth_subs;
-    float  marker_width, num_cam,marker_height,image_width,ground_truth_x_,ground_truth_y_,ground_truth_yaw_;
+    ros::Publisher publicar,publicar_cam1,publicar_cam2,publicar_cam3,publicar_mapa,error_pub,path_pub_r,path_pub_out,yaw_odom,yaw_amcl;
+    ros::Subscriber detector_subs, corners_subs,ground_truth_subs,real_odom_subs;
+    float  marker_width, num_cam,marker_height,image_width,ground_truth_x_,ground_truth_y_,ground_truth_yaw_,image_height;
     visualization_msgs::Marker pub_map;
     tf::TransformBroadcaster br_marker;
     Mat imagen_filter;
@@ -310,6 +311,7 @@ class AmclNode
     void imageCallback(const sensor_msgs::ImageConstPtr& msg);
     void detectionCallback (const detector::messagedet::ConstPtr &msg);
     void groundTruthCallback (const nav_msgs::Odometry::ConstPtr& msg);
+    void realOdomCallback (const geometry_msgs::PoseStamped& msg);
     std::vector<geometry_msgs::Point> CalculateRelativePose (Marcador Marca, geometry_msgs::Pose CamaraMundo);
     //Prob related parameters
     double marker_z_hit,marker_z_rand,marker_sigma_hit,marker_landa;
@@ -317,6 +319,7 @@ class AmclNode
     tf::MessageFilter<detector::messagedet>* marker_detection_filter_;
     nav_msgs::Path reference, output;
     geometry_msgs::Pose ground_truth;
+    geometry_msgs::PoseStamped real_odom;
 
     //Fusion coefficients
     double marker_coeff;
@@ -324,6 +327,7 @@ class AmclNode
 
     //Simulation or real (for camera)
     int simulation;
+    tf::Pose pose_ini;
 
 
 
@@ -508,8 +512,8 @@ AmclNode::AmclNode() :
                                                        odom_frame_id_,
                                                        100);
 
- /* laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
-  this, _1));*/
+ //laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
+  //this, _1));
 
   if(use_map_topic_) {
     map_sub_ = nh_.subscribe("map", 1, &AmclNode::mapReceived, this);
@@ -529,12 +533,12 @@ AmclNode::AmclNode() :
                                        boost::bind(&AmclNode::checkLaserReceived, this, _1));
 
   //cout<<"llego a camara"<<endl;
-  marker_= new AMCLMarker();
-  marker_->simulation= simulation;
+
   //For Camera PF
   XmlRpc::XmlRpcValue marker_list,camera_list;
   //float image_width_;
   private_nh_.getParam("/amcl_doris/IMAGE_WIDTH",image_width);
+  private_nh_.getParam("/amcl_doris/IMAGE_HEIGHT",image_height);
  // marker_->image_width=image_width_;
   private_nh_.getParam("/amcl_doris/MARKER_HEIGHT",marker_height);
   private_nh_.getParam("/amcl_doris/MARKER_WIDTH",marker_width);
@@ -547,6 +551,8 @@ AmclNode::AmclNode() :
   private_nh_.getParam("/amcl_doris/marker_landa",marker_landa);
   cout<<"landa"<<marker_landa<<endl;
   private_nh_.getParam("/amcl_doris/simulation",simulation);
+  marker_= new AMCLMarker(simulation);
+  marker_->simulation= simulation;
   //cout<<"marker_landa"<<marker_landa<<endl;
   //Reading mapfile
   std::vector<geometry_msgs::Pose> Centros;
@@ -621,6 +627,9 @@ AmclNode::AmclNode() :
   marker_detection_filter_->registerCallback(boost::bind(&AmclNode::detectionCallback,
                                                  this, _1));
   ground_truth_subs=nh_.subscribe("/Doris/ground_truth/state",1, &AmclNode::groundTruthCallback,this);
+  if(simulation == 0){
+  real_odom_subs=nh_.subscribe("Doris/odom",1,&AmclNode::realOdomCallback,this);
+  }
   m_force_update_cam = false;
   m_force_update_scan=false;
   updated_scan=false;
@@ -631,6 +640,8 @@ AmclNode::AmclNode() :
   error_pub=nh_.advertise<amcl_doris::pose_error>("amcl_error",1);
   path_pub_r=nh_.advertise<nav_msgs::Path>("reference_path",1);
   path_pub_out=nh_.advertise<nav_msgs::Path>("output_path",1);
+  yaw_odom=nh_.advertise<std_msgs::Float64>("odom_yaw",1);
+  yaw_amcl=nh_.advertise<std_msgs::Float64>("amcl_yaw",1);
 //cout<<"11"<<endl;
   dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
   dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
@@ -785,7 +796,7 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
 
   //Markers
   delete marker_;
-  marker_=new AMCLMarker();
+  marker_=new AMCLMarker(simulation);
   ROS_ASSERT(marker_);
   if (marker_model_type_==MARKER_MODEL_LIKELIHOOD){
       ROS_INFO("Initializing marker filter...");
@@ -796,7 +807,7 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
       marker_->tf_cameras=tf_cameras;
       marker_->num_cam=num_cam;
       marker_->image_width=image_width;
-      marker_->simulation=simulation;
+      marker_->image_height=image_height;
   }
 
   delete marker_detection_filter_;
@@ -1087,7 +1098,7 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
   }
   //Markers
   delete marker_;
-  marker_=new AMCLMarker();
+  marker_=new AMCLMarker(simulation);
   ROS_ASSERT(marker_);
   if (marker_model_type_==MARKER_MODEL_LIKELIHOOD){
       marker_->SetModelLikelihoodField(marker_z_hit,marker_z_rand,marker_sigma_hit,marker_landa,marker_coeff);
@@ -1095,7 +1106,8 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
       marker_->tf_cameras=tf_cameras;
       marker_->num_cam=num_cam;
       marker_->image_width=image_width;
-      marker_->simulation = simulation;
+      marker_->image_height=image_height;
+      marker_->simulation=simulation;
   }
   // In case the initial pose message arrived before the first map,
   // try to apply the initial pose now that the map has arrived.
@@ -1742,7 +1754,7 @@ AmclNode::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStampe
   pose_new = pose_old * tx_odom;
 
   // Transform into the global frame
-
+  pose_ini=pose_new;
   ROS_INFO("Setting pose (%.6f): %.3f %.3f %.3f",
            ros::Time::now().toSec(),
            pose_new.getOrigin().x(),
@@ -1924,6 +1936,8 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
         marker_update=true;
         frame_to_camera_=msg->header.frame_id;
         marker_->simulation=simulation;
+        marker_->image_height=image_height;
+        marker_->image_width=image_width;
     }
         pf_vector_t pose;
 
@@ -2014,6 +2028,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
             //cout<<odom_frame_id_<<endl;
             //Update filter with marker data
             if(!observation.empty()){
+            cout<<"entro"<<endl;
             marker_->UpdateSensor(pf_,(AMCLSensorData*) &mdata);
             updated_camera=true;
             }
@@ -2023,7 +2038,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
             //cout<<"numcam"<<num_cam<<endl;
             //cout<<"image_width"<<image_width<<endl;
 
-            //if(!(++resample_count_cam % resample_interval_))
+            if(!(++resample_count_cam % resample_interval_))
                 //{
                   //cout<<"resample"<<endl;
                   pf_update_resample(pf_);
@@ -2115,6 +2130,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
               pose_pub_.publish(p);
 
               //Publishing error with gazebo's ground_truth
+              if(simulation == 1){
               amcl_doris::pose_error p_error;
 
               float error_x=p.pose.pose.position.x-ground_truth_x_;
@@ -2125,7 +2141,13 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
               p_error.vec_error.data.push_back(sqrt((error_x*error_x)+(error_y*error_y)));
               p_error.vec_error.data.push_back(marker_hyps[max_weight_hyp].pf_pose_mean.v[2]-ground_truth_yaw_);
               p_error.num_markers.data=int(observation.size());
-
+              }
+              std_msgs::Float64 yaw_out;
+              //yaw_out.header.stamp=ros::Time::now();
+              if (simulation==0){
+              yaw_out.data=marker_hyps[max_weight_hyp].pf_pose_mean.v[2];
+              yaw_amcl.publish(yaw_out);
+              }
               p_error.header.stamp=ros::Time::now();
               error_pub.publish(p_error);
               last_published_pose = p;
@@ -2209,12 +2231,18 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
   geometry_msgs::PoseStamped pose_g,pose_o;
   pose_g.pose=ground_truth;
   pose_g.header.stamp=ros::Time::now();
-  reference.poses.push_back(pose_g);
+  if(simulation == 1){
+      reference.poses.push_back(pose_g);
+  }
+
   pose_o.pose=last_published_pose.pose.pose;
   pose_o.header.stamp=ros::Time::now();
   output.poses.push_back(pose_o);
   reference.header.frame_id="map";
   output.header.frame_id="map";
+  if(simulation==0){
+      reference.poses.push_back(real_odom);
+  }
   path_pub_r.publish(reference);
   path_pub_out.publish(output);
 
@@ -2227,5 +2255,20 @@ void AmclNode::groundTruthCallback (const nav_msgs::Odometry::ConstPtr& msg){
     tf::Pose pose;
     tf::poseMsgToTF(msg->pose.pose,pose);
     ground_truth_yaw_=tf::getYaw(pose.getRotation());
+}
+
+void AmclNode::realOdomCallback (const geometry_msgs::PoseStamped& msg){
+    real_odom=msg;
+    real_odom.pose.position.x=real_odom.pose.position.x+pose_ini.getOrigin().x();
+    real_odom.pose.position.y=real_odom.pose.position.y+pose_ini.getOrigin().y();
+
+    tf::Pose pose;
+    tf::poseMsgToTF(msg.pose,pose);
+    float real_odom_yaw=tf::getYaw(pose.getRotation());
+    std_msgs::Float64 yaw;
+    // yaw.header.stamp=ros::Time::now();
+    yaw.data=real_odom_yaw;
+    yaw_odom.publish(yaw);
+
 }
 

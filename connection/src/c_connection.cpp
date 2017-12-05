@@ -88,13 +88,14 @@ cConnection::cConnection (const ros::NodeHandle& nh, const ros::NodeHandle& nh_p
     buffer[5]=0x7f;
     // std::string port_str(port);
     memcpy(buffer + 6, port, l);
-    cout<<buffer<<endl;
+    //cout<<buffer<<endl;
     //sending message
     int ret=send(socket_tcp, buffer, l + 6, 0);
     cout<<ret<<endl;
 
     //Publishing laser_data
     this->laser_pub=nh_.advertise<sensor_msgs::LaserScan>("Doris/scan",1,true);
+    this->odom_pub=nh_.advertise<geometry_msgs::PoseStamped>("Doris/odom",1,true);
     //Publishing image
     image_transport::ImageTransport it(nh_);
     this->image_pub=it.advertise("Doris/camera",1,true);
@@ -252,6 +253,20 @@ void cConnection::decoMessage(char message [], int size){
         this->br.sendTransform(odom);
 
         //topic
+        geometry_msgs::PoseStamped odom_msgs;
+        odom_msgs.header.frame_id="Doris/odom";
+        //odom_msgs.child_frame_id="Doris/cuerpo";
+        odom_msgs.pose.position.x=vec.at(0);
+        odom_msgs.pose.position.y=vec.at(1);
+        odom_msgs.pose.position.z=0.0;
+        odom_msgs.pose.orientation.x=quat.x();
+        odom_msgs.pose.orientation.y=quat.y();
+        odom_msgs.pose.orientation.z=quat.z();
+        odom_msgs.pose.orientation.w=quat.w();
+        odom_msgs.header.stamp=ros::Time::now();
+        odom_pub.publish(odom_msgs);
+
+
 
 
 

@@ -42,7 +42,7 @@ class cConnection{
 public:
 ros::NodeHandle nh_;
 ros::NodeHandle nh_private_;
-ros::Publisher laser_pub;
+ros::Publisher laser_pub, odom_pub;
 image_transport::Publisher image_pub;
 
 //Socket

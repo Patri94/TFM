@@ -1,11 +1,11 @@
 # Center Marker Positions in the WORLD reference frame
 
 marker_positions:
-- x: 0.6
-  y: 0.3
-  z: 2.15
+- x: -0.65
+  y: 0.4
+  z: 2.20
   roll: -1.57
   pitch: 0.0
-  yaw: 1.57
+  yaw: 3.14
   ID: 0
 
