@@ -35,7 +35,7 @@ using namespace tf;
         image_geometry::PinholeCameraModel pin_model;
         geometry_msgs::Pose EstimatedPose,Cam1,Cam2,Cam3;
         std::vector<geometry_msgs::TransformStamped> tf_cameras;
-        ros::Publisher publicar,publicar_cam1,publicar_cam2,publicar_cam3,publicar_mapa;
+        ros::Publisher publicar,publicar_cam1,publicar_cam2,publicar_cam3,publicar_mapa,pub_centros;
         ros::Subscriber detector_subs, odom_subs;
         float  marker_width, num_cam,marker_height,image_width;
         TransformBroadcaster br;
@@ -45,6 +45,7 @@ using namespace tf;
         int simulation;
         sensor_msgs::CameraInfo cam_inf_ed;
         Mat camMatrix, distCoeff,xi;
+        geometry_msgs::PoseArray mapa;
 
         //Constructor and Destructor
        ParticleFilter(const ros::NodeHandle& nh1,  const ros::NodeHandle& nh_private1);
@@ -59,7 +60,7 @@ using namespace tf;
         void ErrorCalc();
         std::vector<cv::Point2d> Proyectar(visualization_msgs::Marker CamCoord1,float width, float cam);
         void imageCallback(const sensor_msgs::ImageConstPtr& msg);
-        void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
+        void odomCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
 };
 

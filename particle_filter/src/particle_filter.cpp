@@ -120,8 +120,9 @@ using namespace cv;
         this->publicar_cam2=nh1_.advertise<visualization_msgs::Marker> ("marker_pose_cam2",1);
         this->publicar_cam3=nh1_.advertise<visualization_msgs::Marker> ("marker_pose_cam3",1);
         this->publicar_mapa=nh1_.advertise<visualization_msgs::Marker> ("mapa",1);
+        this->pub_centros=nh1_.advertise<geometry_msgs::PoseArray> ("centros",1);
         detector_subs=nh1_.subscribe<sensor_msgs::Image> ("DetectorNode/detector_output",1,&ParticleFilter::imageCallback,this);
-        odom_subs=nh1_.subscribe<nav_msgs::Odometry> ("Doris/odom",1,&ParticleFilter::odomCallback,this);
+        odom_subs=nh1_.subscribe<geometry_msgs::PoseStamped> ("Doris/odom",1,&ParticleFilter::odomCallback,this);
         camMatrix = cv::Mat(3, 3, CV_32F);
                 camMatrix.at<float>(0, 0) = IMAGE_WIDTH/2;
                 camMatrix.at<float>(0, 1) = 0.0;
@@ -200,8 +201,8 @@ using namespace cv;
     ParticleFilter::~ParticleFilter(){
 
     }
-    void ParticleFilter::odomCallback(const nav_msgs::Odometry::ConstPtr& msg){
-        this->EstimatedPose=msg->pose.pose;
+    void ParticleFilter::odomCallback(const geometry_msgs::PoseStamped::ConstPtr&  msg){
+        this->EstimatedPose=msg->pose;
 
     }
 
@@ -265,7 +266,7 @@ using namespace cv;
 
 void ParticleFilter::LoadMap(std::vector<int>maps,std::vector<int>sectors,std::vector<int>IDs,std::vector<geometry_msgs::Pose> Centros){
 
-    this->pub_map.header.frame_id="Doris/cuerpo";
+    this->pub_map.header.frame_id="map";
     this->pub_map.pose.orientation.w= 1.0;
     this->pub_map.scale.x=0.1;
     this->pub_map.scale.y=0.1;
@@ -277,11 +278,14 @@ void ParticleFilter::LoadMap(std::vector<int>maps,std::vector<int>sectors,std::v
     this->pub_map.color.r = 1.0f;
 
     this->pub_map.color.a = 1.0;
-
+    //geometry_msgs::PoseArray mapa;
+    mapa.header.frame_id="map";
+    mapa.header.stamp=ros::Time::now();
     for (int i=0;i<Centros.size();i++){
             Marcador Marker;
             geometry_msgs::Pose marker_pose=Centros[i];
             geometry_msgs::TransformStamped tf_marker;
+            mapa.poses.push_back(marker_pose);
             tf_marker.header.frame_id="map";
             tf_marker.child_frame_id="Marca"+std::to_string(i);
             tf_marker.transform.translation.x=marker_pose.position.x;
@@ -490,7 +494,7 @@ void ParticleFilter::ErrorCalc(){
     tf::quaternionTFToMsg (Quat,QuatMs);
     Supuesta.orientation=QuatMs;
     //std::vector<cv::Point2d> proyeccion;
-    std::vector<geometry_msgs::Point> Relative=this->ObservationModel(this->map[j],Supuesta);
+    std::vector<geometry_msgs::Point> Relative=this->ObservationModel(this->map[j],EstimatedPose);
     //cout<<"AfterObsModel"<<endl;
     this->map[j].setRelativePose(Relative);
     visualization_msgs::Marker CornersRelativePose;
@@ -507,11 +511,11 @@ void ParticleFilter::ErrorCalc(){
     CornersRelativePose.action= visualization_msgs::Marker::ADD;
     CornersRelativePose.color.r = 1.0f;
 
-    CornersRelativePose.header.frame_id="camera_real";
+    CornersRelativePose.header.frame_id="Doris/cam1_link";
     for (int i=0;i<4;i++){
             geometry_msgs::Point position = Relative[i];
             geometry_msgs::PointStamped msg;
-            msg.header.frame_id="camera_real";
+            msg.header.frame_id="Doris/cam1_link";
             msg.point=Relative[i];
             CornersRelativePose.points.push_back(Relative[i]);
         }

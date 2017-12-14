@@ -1,0 +1,20 @@
+digraph G {
+"Doris/plataforma" -> "Doris/cam1_link"[label="Broadcaster: /Doris/robot_state_publisher\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 701.101 sec old)\nBuffer length: 0.000 sec\n"];
+"Doris/mastil" -> "Doris/plataforma"[label="Broadcaster: /Doris/robot_state_publisher\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 701.101 sec old)\nBuffer length: 0.000 sec\n"];
+"Doris/plataforma" -> "Doris/cam2_link"[label="Broadcaster: /Doris/robot_state_publisher\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 701.101 sec old)\nBuffer length: 0.000 sec\n"];
+"Doris/plataforma" -> "Doris/cam3_link"[label="Broadcaster: /Doris/robot_state_publisher\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 701.101 sec old)\nBuffer length: 0.000 sec\n"];
+"Doris/cuerpo" -> "Doris/cas1_link"[label="Broadcaster: /Doris/robot_state_publisher\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 701.101 sec old)\nBuffer length: 0.000 sec\n"];
+"Doris/odom" -> "Doris/cuerpo"[label="Broadcaster: /gazebo\nAverage rate: 20.265 Hz\nMost recent transform: 701.073 ( 0.028 sec old)\nBuffer length: 3.849 sec\n"];
+"Doris/cuerpo" -> "Doris/cas2_link"[label="Broadcaster: /Doris/robot_state_publisher\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 701.101 sec old)\nBuffer length: 0.000 sec\n"];
+"Doris/cuerpo" -> "Doris/cas3_link"[label="Broadcaster: /Doris/robot_state_publisher\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 701.101 sec old)\nBuffer length: 0.000 sec\n"];
+"Doris/cuerpo" -> "Doris/cas4_link"[label="Broadcaster: /Doris/robot_state_publisher\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 701.101 sec old)\nBuffer length: 0.000 sec\n"];
+"Doris/cuerpo" -> "Doris/contrapeso"[label="Broadcaster: /Doris/robot_state_publisher\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 701.101 sec old)\nBuffer length: 0.000 sec\n"];
+"Doris/cuerpo" -> "Doris/laser_link"[label="Broadcaster: /Doris/robot_state_publisher\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 701.101 sec old)\nBuffer length: 0.000 sec\n"];
+"Doris/cuerpo" -> "Doris/mastil"[label="Broadcaster: /Doris/robot_state_publisher\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 701.101 sec old)\nBuffer length: 0.000 sec\n"];
+"Doris/cuerpo" -> "Doris/left_wheel"[label="Broadcaster: /Doris/robot_state_publisher\nAverage rate: 40.519 Hz\nMost recent transform: 701.074 ( 0.027 sec old)\nBuffer length: 3.850 sec\n"];
+"Doris/cuerpo" -> "Doris/right_wheel"[label="Broadcaster: /Doris/robot_state_publisher\nAverage rate: 40.519 Hz\nMost recent transform: 701.074 ( 0.027 sec old)\nBuffer length: 3.850 sec\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 701.101"[ shape=plaintext ] ;
+ }->"Doris/odom";
+}

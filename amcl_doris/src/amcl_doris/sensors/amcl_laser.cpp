@@ -32,10 +32,16 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <unistd.h>
-
+#include <iomanip>
+#include <sstream>
+#include <fstream>
+#include <sstream>
+#include <iostream>
 #include "amcl_doris/sensors/amcl_laser.h"
 
 using namespace amcl;
+using namespace std;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Default constructor
@@ -143,6 +149,8 @@ bool AMCLLaser::UpdateSensor(pf_t *pf, AMCLSensorData *data)
 // Determine the probability for the given pose
 double AMCLLaser::BeamModel(AMCLLaserData *data, pf_sample_set_t* set)
 {
+
+  cout<<"entro beam"<<endl;
   AMCLLaser *self;
   int i, j, step;
   double z, pz;
@@ -205,7 +213,8 @@ double AMCLLaser::BeamModel(AMCLLaserData *data, pf_sample_set_t* set)
       p += pz*pz*pz;
     }
 
-    sample->weight *= self->laser_coeff * p;
+
+    sample->weight *= p;
     total_weight += sample->weight;
   }
 
@@ -214,6 +223,7 @@ double AMCLLaser::BeamModel(AMCLLaserData *data, pf_sample_set_t* set)
 
 double AMCLLaser::LikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* set)
 {
+  cout<<"in particle filter"<<endl;
   AMCLLaser *self;
   int i, j, step;
   double z, pz;
@@ -259,9 +269,10 @@ double AMCLLaser::LikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* set
         continue;
 
       // Check for NaN
-      if(obs_range != obs_range)
+      if(obs_range != obs_range){
         continue;
-
+        cout<<"nan"<<endl;
+      }
       pz = 0.0;
 
       // Compute the endpoint of the beam
@@ -294,7 +305,7 @@ double AMCLLaser::LikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* set
       // works well, though...
       p += pz*pz*pz;
     }
-
+    std::cout<<p<<endl;
     sample->weight *= p;
     total_weight += sample->weight;
   }

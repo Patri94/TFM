@@ -40,7 +40,7 @@ using namespace amcl;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Default constructor
-AMCLMarker::AMCLMarker(int simualtion) : AMCLSensor()
+AMCLMarker::AMCLMarker(int simulation) : AMCLSensor()
 
 {
 
@@ -109,7 +109,8 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
   std::vector<Marcador> observation=data->markers_obs;
   //cout<<"landa in likelihood"<<self->landa<<endl;
   if (!self->image_filter.empty()){
-
+  //cout<<self->simulation<<endl;
+  cout<<"dentro"<<self->image_height<<endl;
   total_weight = 0.0;
   int i;
   std::vector<Marcador> detected_from_map;
@@ -158,7 +159,7 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
 
           //Calculate projection of marker corners
           std::vector<geometry_msgs::Point> relative_to_cam=self->CalculateRelativePose(detected_from_map[j],sample_pose);
-          //cout<<"after relative pose"<<endl;
+          cout<<"after relative pose"<<endl;
            std::vector<cv::Point2d> projection;
            if (self->simulation == 1){
                //cout<<"simu"<<endl;
@@ -169,7 +170,7 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
                std::vector<cv::Point3f>rel;
                //cout<<"llego"<<endl;
                for (int i=0; i< relative_to_cam.size(); i++){
-                   cout<<"llegodentro"<<endl;
+                   //cout<<"llegodentro"<<endl;
                                  cv::Point3d Coord;
                                  Coord.x=relative_to_cam[i].x;
                                  Coord.y=relative_to_cam[i].y;
@@ -187,15 +188,22 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
                tvec.at<double>(0)=0.0;
                tvec.at<double>(1)=0.0;
                tvec.at<double>(2)=0.0;
-               cout<<"antes de proyectar"<<endl;
-               cout<<rel.size()<<endl;
+               //cout<<"antes de proyectar"<<endl;
+               //cout<<rel.size()<<endl;
 
            cv::omnidir::projectPoints(rel,imagePoints,rvec,tvec,self->camMatrix,self->xi,self->distCoeff);
-           cout<<imagePoints.size()<<endl;
+           //cout<<imagePoints.size()<<endl;
            cout<<"despues de proyectar1"<<endl;
            for(int i=0; i<imagePoints.size();i++){
                 projection.push_back( cv::Point2d( (double)imagePoints[i].x, (double)imagePoints[i].y  ) );
            }
+          /* line (self->image_filter,projection[0], projection[1],Scalar(0,255,0),4);
+           line (self->image_filter,projection[1], projection[2],Scalar(0,255,0),4);
+           line (self->image_filter,projection[2], projection[3],Scalar(0,255,0),4);
+           line (self->image_filter,projection[3], projection[0],Scalar(0,255,0),4);
+
+           imshow("filtro",self->image_filter);
+           waitKey(30);*/
            cout<<"despues de proyectar"<<endl;
            }
 
@@ -203,8 +211,10 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
           std::vector<cv::Point2f> Puntos=observation[j].getMarkerPoints();
           //Compute probability for every corner
           z=self->calculateError(observation[j].getMarkerPoints(),projection);
+          cout<<"despues de error"<<endl;
           float ztot=std::accumulate(z.begin(), z.end(), 0.0);
-          for (int i=0;i<4;i++){
+          cout<<"despues de sumar"<<endl;
+          //for (int i=0;i<4;i++){
               pz=0.0;
               //Opción1:Gaussian model
               //pz+=self->z_hit*exp(-(z[i]*z[i]) / z_hit_denom);
@@ -216,15 +226,15 @@ double AMCLMarker::ObservationLikelihood(AMCLMarkerData *data, pf_sample_set_t* 
               //pz+=z[i];
               pz+=self->landa*exp(-self->landa*ztot);
               p+=pz*pz*pz;
-          }
+          //}
 
         /*  if (pz>1.0){
               cout<<"mayor"<<endl;
           }*/
 
       }
-      sample->weight *= self->marker_coeff * p;
-      //cout<<"weight of sample"<<sample->weight<<endl;
+      sample->weight *= p;
+      cout<<sample->weight<<endl;
       total_weight += sample->weight;
       //cout<<"despues de asignar peso a particula"<<endl;
 
@@ -239,7 +249,7 @@ std::vector<float> AMCLMarker::calculateError(std::vector<cv::Point2f> projectio
 
     //normalizing error with width and height of image.
     //float image_height=679;
-
+    //cout<<"en error"<<image_height<<endl;
     std::vector<float> errorv;
     for (int i=0;i<4;i++){
         float errorx,errory;
@@ -251,9 +261,9 @@ std::vector<float> AMCLMarker::calculateError(std::vector<cv::Point2f> projectio
         error+=sqrt((errorx*errorx)+(errory*errory));
         errorv.push_back(error);
         //cout<<"error"<<error<<endl;
-        if(error>sqrt(2)){
+        /*if(error>sqrt(2)){
             waitKey();
-        }
+        }*/
     }
     //cout<<"error"<<error<<endl;
     return errorv;
@@ -371,24 +381,22 @@ std::vector<geometry_msgs::Point> AMCLMarker::CalculateRelativePose (Marcador Ma
     tf::Quaternion RotCam;
     //From Robot base to camera
    //Pitch de M_PI/2
-   switch (this->simulation){
-    case 1:
-    {
-        cout<<"simuproy"<<endl;
+   if (this->simulation==1){
+        //cout<<"simuproy"<<endl;
      RotCam.setRPY(-M_PI/2,0,-M_PI/2);
     RobTCam.setOrigin(tf::Vector3(0,0,1.3925));
-    break;
-    }
-    case 0:
-        cout<<"realrelative"<<endl;
+   }
+    if (this->simulation == 0)
+
     {
-        RotCam.setRPY(0,0,-M_PI/2);
-        RobTCam.setOrigin(tf::Vector3(-0.26,0,1.41));
-        break;
+        //cout<<"realrelative"<<endl;
+        RotCam.setRPY(0,0,-M_PI/2+M_PI);
+        RobTCam.setOrigin(tf::Vector3(-0.26,0,1.415));
+
+        //RotCamREal.setRPY(0,0,M_PI);
+
     }
-    default:
-        break;
-    }
+
     //RobTCam.setOrigin(tf::Vector3(0,0,1.3925));
     RobTCam.setRotation(RotCam);
     tf::Quaternion QMundRCam (CamaraMundo.orientation.x,CamaraMundo.orientation.y,CamaraMundo.orientation.z,CamaraMundo.orientation.w);
@@ -427,7 +435,7 @@ std::vector<geometry_msgs::Point> AMCLMarker::CalculateRelativePose (Marcador Ma
 
         }
     //cout<<"Tengo la posicion relativa"<<endl;
-    cout<<"salgo"<<endl;
+    //cout<<"salgo"<<endl;
     return RelativaCorners;
 
 

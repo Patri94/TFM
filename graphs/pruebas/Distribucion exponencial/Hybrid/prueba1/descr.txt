@@ -1,0 +1,2 @@
+El laser no llega al final del pasillo = error en x hasta que ve el marcador 
+

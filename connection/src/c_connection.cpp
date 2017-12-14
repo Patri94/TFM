@@ -285,9 +285,9 @@ void cConnection::decoMessage(char message [], int size){
       //cout<<ros::Time::now()<<endl;
       scan.header.stamp=ros::Time::now();
       scan.header.frame_id="Doris/laser_link";
-      scan.angle_min=PI;
-      scan.angle_max=-PI;
-      scan.angle_increment=(2*PI)/(vec.size());
+      scan.angle_min=PI/2;
+      scan.angle_max=-PI/2;
+      scan.angle_increment=(-PI)/(vec.size());
       scan.range_min=0.0;
       scan.range_max=80;
       scan.ranges=vec;

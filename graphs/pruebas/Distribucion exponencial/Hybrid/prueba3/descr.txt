@@ -1,0 +1,1 @@
+Por el pasillo desde (0,4), sigma 0.1 para el laser y landa 2 para la camara . Se ve como cuando detecta marcador corrige en el eje x, con el laser no porque no hay referencia.

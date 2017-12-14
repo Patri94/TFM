@@ -10,6 +10,7 @@ int main(int argc, char **argv){
               r.sleep();
               particle_obj.ErrorCalc();
               particle_obj.publicar_mapa.publish(particle_obj.pub_map);
+              particle_obj.pub_centros.publish(particle_obj.mapa);
           }
 
 

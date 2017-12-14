@@ -572,6 +572,7 @@ void cDetector::createMessage(void){
 
         }
       //}
+        if (! OptMarkers.empty()){
        for (int i=0;i<this->OptMarkers.size();i++){
                 detector::marker detected;
                 std::vector<cv::Point2f> corners_f =this->OptMarkers[i].getMarkerPoints();
@@ -598,19 +599,24 @@ void cDetector::createMessage(void){
                  convert<<OptMarkers[i].getMarkerID();
                  etiqueta=convert.str();
                  putText(this->comb, etiqueta, OptMarkers[i].getPoint(0),CV_FONT_HERSHEY_COMPLEX,0.8,Scalar(0,0,255));
-                 /* putText(this->comb, "1", OptMarkers[i].getPoint(1),CV_FONT_HERSHEY_COMPLEX,0.8,Scalar(0,0,255));
+                /* putText(this->comb, "1", OptMarkers[i].getPoint(1),CV_FONT_HERSHEY_COMPLEX,0.8,Scalar(0,0,255));
                    putText(this->comb, "2", OptMarkers[i].getPoint(2),CV_FONT_HERSHEY_COMPLEX,0.8,Scalar(0,0,255));
                     putText(this->comb, "3", OptMarkers[i].getPoint(3),CV_FONT_HERSHEY_COMPLEX,0.8,Scalar(0,0,255));*/
       }
+
+
+        }
        imshow("Detection",this->comb);
        waitKey(30);
 
         //cout<<"detectados"<<msg_det.DetectedMarkers.size()<<endl;
-         msg_det.header.frame_id="Doris/cam1_link";
-         msg_det.header.stamp=ros::Time::now();
+       msg_det.header.frame_id="Doris/cam1_link";
+       msg_det.header.stamp=ros::Time::now();
+          this->publish_detection.publish(msg_det);
          this->comb_msg=cv_bridge::CvImage(std_msgs::Header(),"bgr8",this->comb).toImageMsg();
-         this->pub_comb.publish(this->comb_msg);
-         this->publish_detection.publish(msg_det);
+         this->pub_comb.publish(comb_msg);
+
+
         }
 
 }

@@ -1,0 +1,1 @@
+Por el pasillo desde el punto (0,4) sin camara, se va en x pero si que sorrige en y. Se ve como las partículas estan expandidas en el eje x porque no tiene inguna referencia.

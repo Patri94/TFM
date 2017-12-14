@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+    
+	
+	<node name="ground_truth" pkg="simulation" type="ground_truthexec"  output="screen"  respawn="false"/>
+	
+	
+	
+        
+</launch>

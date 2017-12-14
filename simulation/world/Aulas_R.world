@@ -14,15 +14,15 @@
       </attenuation>
       <direction>-0.5 0.5 -1</direction>
     </light>
-     <!--<include>
+     <include>
         <uri>model://main_hall_tags/Tag0</uri>
         <pose>0 3.38 1.4 0 0 -1.57</pose>
-    </include>-->
+    </include>
     <include>
         <uri>model://main_hall_tags/Tag8</uri>
         <pose>4.87 3 1.4 0 0 0</pose>
     </include>
-    <!--<include>
+    <include>
         <uri>model://main_hall_tags/Tag10</uri>
         <pose>6.36 4.68 1.4 0 0 3.14</pose>
     </include>

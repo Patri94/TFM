@@ -505,15 +505,15 @@ AmclNode::AmclNode() :
 
   set_map_srv_= nh_.advertiseService("set_map", &AmclNode::setMapCallback, this);
 
- laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
+ /*laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
  laser_scan_filter_ =
        new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_,
                                                        *tf_,
                                                        odom_frame_id_,
                                                        100);
 
- //laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
-  //this, _1));
+ laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
+ this, _1));*/
 
   if(use_map_topic_) {
     map_sub_ = nh_.subscribe("map", 1, &AmclNode::mapReceived, this);
@@ -539,6 +539,7 @@ AmclNode::AmclNode() :
   //float image_width_;
   private_nh_.getParam("/amcl_doris/IMAGE_WIDTH",image_width);
   private_nh_.getParam("/amcl_doris/IMAGE_HEIGHT",image_height);
+  cout<<"fuera"<<image_height<<endl;
  // marker_->image_width=image_width_;
   private_nh_.getParam("/amcl_doris/MARKER_HEIGHT",marker_height);
   private_nh_.getParam("/amcl_doris/MARKER_WIDTH",marker_width);
@@ -1686,7 +1687,23 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
           }
         }
 
+        geometry_msgs::PoseStamped pose_g,pose_o;
+        pose_g.pose=ground_truth;
+        pose_g.header.stamp=ros::Time::now();
+        if(simulation == 1){
+            reference.poses.push_back(pose_g);
+        }
 
+        pose_o.pose=last_published_pose.pose.pose;
+        pose_o.header.stamp=ros::Time::now();
+        output.poses.push_back(pose_o);
+        reference.header.frame_id="map";
+        output.header.frame_id="map";
+        if(simulation==0){
+            reference.poses.push_back(real_odom);
+        }
+        path_pub_r.publish(reference);
+        path_pub_out.publish(output);
 
 }
 
@@ -2023,6 +2040,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
             marker_->model_type=marker_model_type_;
             marker_->image_width=image_width;
             marker_->num_cam=num_cam;
+            marker_->image_height=image_height;
             //cout<<"cuantos"<<observation.size()<<endl;
             //cout<<global_frame_id_<<endl;
             //cout<<odom_frame_id_<<endl;
@@ -2141,6 +2159,8 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
               p_error.vec_error.data.push_back(sqrt((error_x*error_x)+(error_y*error_y)));
               p_error.vec_error.data.push_back(marker_hyps[max_weight_hyp].pf_pose_mean.v[2]-ground_truth_yaw_);
               p_error.num_markers.data=int(observation.size());
+              p_error.header.stamp=ros::Time::now();
+              error_pub.publish(p_error);
               }
               std_msgs::Float64 yaw_out;
               //yaw_out.header.stamp=ros::Time::now();
@@ -2148,8 +2168,7 @@ void AmclNode::detectionCallback (const detector::messagedet::ConstPtr &msg){
               yaw_out.data=marker_hyps[max_weight_hyp].pf_pose_mean.v[2];
               yaw_amcl.publish(yaw_out);
               }
-              p_error.header.stamp=ros::Time::now();
-              error_pub.publish(p_error);
+
               last_published_pose = p;
 
              // ROS_DEBUG("New pose: %6.3f %6.3f %6.3f",

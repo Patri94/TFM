@@ -11,12 +11,33 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_ros
   roscpp
   rospy
+  tf
+  cv_bridge
+  std_msgs
+  image_transport
+  geometry_msgs
+  image_geometry
+  tf2
 )
 
+catkin_package(
+ INCLUDE_DIRS include
+ CATKIN_DEPENDS cv_bridge roscpp std_msgs gazebo_ros image_transport tf geometry_msgs image_geometry tf2 
+ DEPENDS 
+)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
+include_directories(include ${catkin_INCLUDE_DIRS} )
 
+add_library(ground_truth
+	src/c_groundtruthtf.cpp
+
+)
+target_link_libraries(ground_truth ${catkin_LIBRARIES})
+
+add_executable (ground_truthexec src/gtruth_node.cpp)
+target_link_libraries(ground_truthexec ${catkin_LIBRARIES} ground_truth )
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
